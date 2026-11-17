@@ -7,20 +7,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous">
 function forcasSave(){
   var inp=document.getElementById('forcas-inp');
-  if(!inp||!inp.value.trim())return;
+  if(!inp||!inp.value.trim()){if(inp)inp.focus();return;}
   var text=inp.value.trim();
+  var key='chassis_forcas';
   var arr=[];
-  try{arr=JSON.parse(localStorage.getItem('chassis_forcas'))||[];}catch(e){}
+  try{var raw=localStorage.getItem(key);arr=raw?JSON.parse(raw):[];}catch(e){arr=[];}
   arr.push({id:'f'+Date.now().toString(36),text:text});
-  localStorage.setItem('chassis_forcas',JSON.stringify(arr));
+  try{localStorage.setItem(key,JSON.stringify(arr));}catch(e){alert('Erro ao salvar: '+e.message);return;}
   inp.value='';
   forcasRender();
 }
 function forcasRender(){
   var cont=document.getElementById('forcas-list');
-  if(!cont)return;
+  if(!cont){setTimeout(forcasRender,100);return;}
+  var raw=localStorage.getItem('chassis_forcas');
   var arr=[];
-  try{arr=JSON.parse(localStorage.getItem('chassis_forcas'))||[];}catch(e){}
+  try{arr=raw?JSON.parse(raw):[];}catch(e){arr=[];}
   if(!arr.length){cont.innerHTML='';return;}
   cont.innerHTML=arr.map(function(item){
     var t=(item.text||'').replace(/</g,'&lt;');
@@ -1047,7 +1049,7 @@ function exportCSV(){
 }
 
 // ── Init ─────────────────────────────────────────────
-forcasRender();
+window.addEventListener("load", function(){ forcasRender(); });
 </script>
 </body>
 </html>
