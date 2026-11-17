@@ -6,6 +6,53 @@
 <title>Atlas Copco × Scania Brasil</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous">
 function forcasSave(){
+  var inp = document.getElementById('forcas-inp');
+  if(!inp) return;
+  var text = inp.value.trim();
+  if(!text){ inp.focus(); return; }
+  var arr = [];
+  try{ arr = JSON.parse(localStorage.getItem('chassis_forcas')||'[]'); }catch(e){ arr=[]; }
+  arr.push({ id:'f'+Date.now().toString(36), text:text });
+  localStorage.setItem('chassis_forcas', JSON.stringify(arr));
+  inp.value = '';
+  forcasRender();
+}
+
+function forcasDel(id){
+  if(!confirm('Remover?')) return;
+  var arr = [];
+  try{ arr = JSON.parse(localStorage.getItem('chassis_forcas')||'[]'); }catch(e){ arr=[]; }
+  arr = arr.filter(function(x){ return x.id !== id; });
+  localStorage.setItem('chassis_forcas', JSON.stringify(arr));
+  forcasRender();
+}
+
+function forcasRender(){
+  var cont = document.getElementById('forcas-list');
+  if(!cont) return;
+  var arr = [];
+  try{ arr = JSON.parse(localStorage.getItem('chassis_forcas')||'[]'); }catch(e){ arr=[]; }
+  if(!arr.length){ cont.innerHTML=''; return; }
+  cont.innerHTML = arr.map(function(item){
+    var t = (item.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var id = item.id;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;'
+      +'padding:12px 14px;margin-bottom:6px;border-radius:10px;'
+      +'background:#1D9E7520;border:.5px solid #1D9E7540;">'
+      +'<div style="font-size:13px;font-weight:600;color:#5DCAA5;">'+t
+      +'<span style="font-size:9px;background:#7C3AED22;color:#C4B5FD;'
+      +'padding:1px 6px;border-radius:4px;font-weight:700;margin-left:8px">Personalizado</span></div>'
+      +'<button onclick="forcasDel(''+id+'')" style="background:none;border:none;'
+      +'font-size:16px;cursor:pointer;color:#6b7080;padding:0 4px" title="Remover">&#x1F5D1;</button>'
+      +'</div>';
+  }).join('');
+}
+
+window.addEventListener('load', function(){ forcasRender(); });8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Copco × Scania Brasil</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous">
+function forcasSave(){
   var inp=document.getElementById('forcas-inp');
   if(!inp||!inp.value.trim()){if(inp)inp.focus();return;}
   var text=inp.value.trim();
