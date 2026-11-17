@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Copco × Scania Brasil</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous">
+function forcasSave(){
+  var inp=document.getElementById('forcas-inp');
+  if(!inp||!inp.value.trim())return;
+  var text=inp.value.trim();
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem('chassis_forcas'))||[];}catch(e){}
+  arr.push({id:'f'+Date.now().toString(36),text:text});
+  localStorage.setItem('chassis_forcas',JSON.stringify(arr));
+  inp.value='';
+  forcasRender();
+}
+function forcasRender(){
+  var cont=document.getElementById('forcas-list');
+  if(!cont)return;
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem('chassis_forcas'))||[];}catch(e){}
+  if(!arr.length){cont.innerHTML='';return;}
+  cont.innerHTML=arr.map(function(item){
+    var t=(item.text||'').replace(/</g,'&lt;');
+    return '<div class="item-card panel-s" onclick="toggle(this)" style="margin-bottom:6px">'
+      +'<div class="item-header"><div class="item-left">'
+      +'<div class="item-title">'+t+' <span style="font-size:9px;background:#7C3AED22;color:#C4B5FD;padding:1px 6px;border-radius:4px;font-weight:700">Personalizado</span></div>'
+      +'</div><div style="display:flex;align-items:center;gap:6px">'
+      +'<span onclick="event.stopPropagation();forcasDel('\''+item.id+'\')" style="font-size:14px;cursor:pointer;color:#6b7080;padding:2px" title="Remover">&#x1F5D1;</span>'
+      +'<div class="chevron">&#9660;</div>'
+      +'</div></div>'
+      +'<div class="smart-area" onclick="event.stopPropagation()">'
+      +'<div class="smart-title">&#9889; Tarefas &amp; Notas</div>'
+      +'<div class="action act-manter" data-aid="'+item.id+'">'
+      +'<div class="action-top"><div class="act-pill">Planejar</div>'
+      +'<div class="act-body"><div class="act-what">'+t+'</div>Use as tarefas e notas abaixo para registrar ações.</div>'
+      +'</div></div></div></div>';
+  }).join('');
+  cont.querySelectorAll('.action[data-aid]').forEach(function(el){
+    if(!el.querySelector('.action-extras'))renderExtras(el.dataset.aid);
+  });
+}
+forcasRender();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh;-webkit-text-size-adjust:100%;}
+
+.pg{display:none;min-height:100vh;}
+.pg.on{display:block;}
+.home-wrap{padding:26px 14px 48px;}
+.home-hd{text-align:center;margin-bottom:28px;}
+.ac-badge{display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;}
+.ac-dot{width:9px;height:9px;border-radius:50%;background:#1D9E75;}
+.ac-lbl{font-size:12px;font-weight:700;color:#6b7080;letter-spacing:.09em;text-transform:uppercase;}
+.home-title{font-size:clamp(22px,6vw,30px);font-weight:800;color:#f0f2f8;margin-bottom:6px;line-height:1.2;}
+.home-title em{color:#1D9E75;font-style:normal;}
+.home-sub{font-size:13px;color:#6b7080;}
+.fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px;margin:0 auto;}
+.fc{border-radius:14px;border:.5px solid;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s;}
+.fc:active{transform:scale(.96);}
+.fc-wide{grid-column:1/-1;}
+.fc-bar{height:5px;}
+.fc-inner{padding:15px 13px 14px;}
+.fc-icon{width:100%;height:82px;margin-bottom:10px;}
+.fc-name{font-size:clamp(14px,3.8vw,16px);font-weight:800;color:#f0f2f8;margin-bottom:3px;}
+.fc-desc{font-size:clamp(10px,2.6vw,11px);color:#8a8fa8;line-height:1.4;margin-bottom:7px;}
+.fc-tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;border:.5px solid;letter-spacing:.05em;text-transform:uppercase;}
+.fc-wide .fc-inner{display:flex;align-items:center;gap:16px;}
+.fc-wide .fc-icon{min-width:110px;width:110px;height:78px;margin-bottom:0;}
+@media(min-width:520px){.home-wrap{padding:36px 24px 60px;}.fc:hover{transform:translateY(-3px);box-shadow:0 8px 28px #00000055;}}
+@media(max-width:360px){.fc-icon{height:66px;}}
+.uc-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;padding:32px 20px;text-align:center;}
+.uc-icon{width:130px;height:100px;margin-bottom:22px;}
+.uc-tag{font-size:10px;font-weight:800;padding:3px 11px;border-radius:20px;border:.5px solid;letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px;display:inline-block;}
+.uc-title{font-size:26px;font-weight:800;color:#f0f2f8;margin-bottom:8px;}
+.uc-line{width:36px;height:3px;border-radius:2px;margin:12px auto 14px;}
+.uc-txt{font-size:13px;color:#6b7080;line-height:1.65;max-width:280px;}
+.topbar{position:sticky;top:0;z-index:100;background:#0f1117;border-bottom:.5px solid #ffffff15;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.btn-back{font-size:13px;font-weight:700;padding:6px 13px;border-radius:8px;border:.5px solid;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent;}
+.tb-title{font-size:12px;font-weight:700;color:#6b7080;flex:1;text-align:center;}
+.btn-exp{font-size:12px;font-weight:700;padding:7px 14px;border-radius:8px;background:#1D9E75;color:#fff;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh;padding:20px 14px 60px;-webkit-text-size-adjust:100%;}
+.app{max-width:860px;margin:0 auto;}
+.app-header{text-align:center;margin-bottom:20px;padding:0 4px;}
+.app-header h2{font-size:clamp(14px,4vw,17px);font-weight:700;color:#f0f2f8;margin-bottom:5px;line-height:1.3;}
+.app-header p{font-size:clamp(11px,3vw,12px);color:#8a8fa8;line-height:1.5;}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px;}
+.tab{padding:10px 6px;border-radius:10px;border:1.5px solid transparent;cursor:pointer;text-align:center;font-size:clamp(11px,3.2vw,13px);font-weight:600;letter-spacing:.03em;transition:all .18s;user-select:none;line-height:1.3;-webkit-tap-highlight-color:transparent;}
+.tab-s{background:#04342C;color:#9FE1CB;border-color:#1D9E7544;}.tab-s.active{background:#1D9E75;color:#fff;border-color:#1D9E75;}
+.tab-w{background:#4A1B0C;color:#F5C4B3;border-color:#D85A3044;}.tab-w.active{background:#D85A30;color:#fff;border-color:#D85A30;}
+.tab-o{background:#042C53;color:#B5D4F4;border-color:#378ADD44;}.tab-o.active{background:#378ADD;color:#fff;border-color:#378ADD;}
+.tab-t{background:#412402;color:#FAC775;border-color:#BA751744;}.tab-t.active{background:#BA7517;color:#fff;border-color:#BA7517;}
+.panel{display:none;}.panel.active{display:block;}
+.panel-label{font-size:clamp(9px,2.5vw,11px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;padding-left:2px;}
+.panel-s .panel-label{color:#5DCAA5;}.panel-w .panel-label{color:#F0997B;}.panel-o .panel-label{color:#85B7EB;}.panel-t .panel-label{color:#EF9F27;}
+.grp{margin-bottom:14px;}
+.grp-title{font-size:clamp(9px,2.5vw,11px);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#6b7080;margin-bottom:7px;padding-left:2px;}
+.item-card{border-radius:11px;margin-bottom:8px;overflow:hidden;border:.5px solid;}
+.panel-s .item-card{background:#04342C;border-color:#1D9E75;}.panel-w .item-card{background:#4A1B0C;border-color:#D85A30;}
+.panel-o .item-card{background:#042C53;border-color:#378ADD;}.panel-t .item-card{background:#412402;border-color:#BA7517;}
+.item-header{padding:12px 13px;cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;user-select:none;-webkit-tap-highlight-color:transparent;}
+.item-header:active{opacity:.75;}
+.item-left{flex:1;min-width:0;}
+.item-title{font-size:clamp(12px,3.4vw,13px);font-weight:600;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;line-height:1.4;}
+.panel-s .item-title{color:#5DCAA5;}.panel-w .item-title{color:#F0997B;}.panel-o .item-title{color:#85B7EB;}.panel-t .item-title{color:#EF9F27;}
+.item-desc{font-size:clamp(11px,3vw,12px);margin-top:4px;line-height:1.55;color:#b0b5c8;}
+.chevron{font-size:11px;color:#6b7080;flex-shrink:0;transition:transform .22s;margin-top:3px;}
+.item-card.open .chevron{transform:rotate(180deg);}
+.smart-area{display:none;padding:0 13px 13px;border-top:.5px solid;}
+.panel-s .smart-area{border-color:#1D9E7540;}.panel-w .smart-area{border-color:#D85A3040;}
+.panel-o .smart-area{border-color:#378ADD40;}.panel-t .smart-area{border-color:#BA751740;}
+.item-card.open .smart-area{display:block;}
+.smart-title{font-size:clamp(9px,2.5vw,10px);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7080;margin:10px 0 8px;}
+.action{border-radius:9px;margin-bottom:7px;border:.5px solid transparent;overflow:hidden;}
+.action:last-child{margin-bottom:0;}
+.act-dominar{background:#1D9E7518;border-color:#1D9E7530;}.act-manter{background:#378ADD18;border-color:#378ADD30;}
+.act-melhorar{background:#EF9F2720;border-color:#EF9F2730;}.act-aproveitar{background:#7C3AED18;border-color:#7C3AED30;}
+.act-mitigar{background:#E24B4A18;border-color:#E24B4A30;}
+.action-top{display:flex;gap:9px;align-items:flex-start;padding:9px 10px 8px;}
+.act-pill{font-size:clamp(8px,2.2vw,9px);font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:5px;text-transform:uppercase;white-space:nowrap;flex-shrink:0;margin-top:1px;}
+.act-dominar .act-pill{background:#1D9E7530;color:#9FE1CB;}.act-manter .act-pill{background:#378ADD30;color:#B5D4F4;}
+.act-melhorar .act-pill{background:#EF9F2730;color:#FAC775;}.act-aproveitar .act-pill{background:#7C3AED30;color:#C4B5FD;}
+.act-mitigar .act-pill{background:#E24B4A30;color:#FCA5A5;}
+.act-body{font-size:clamp(11px,3vw,12px);line-height:1.55;color:#b0b5c8;flex:1;}
+.act-what{font-weight:600;color:#e8eaf0;margin-bottom:2px;}
+
+
+/* ── REDESIGNED EXTRAS ── */
+.action-extras { border-top: .5px solid #ffffff10; padding: 8px 10px 10px; }
+.extras-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.extras-counts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.count-pill { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; cursor: pointer; transition: opacity .15s; display: flex; align-items: center; gap: 3px; }
+.count-pill:hover { opacity: .8; }
+.count-tasks { background: #1D9E7520; color: #9FE1CB; border: .5px solid #1D9E7540; }
+.count-notes { background: #378ADD20; color: #B5D4F4; border: .5px solid #378ADD40; }
+.btn-add-extra { font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 7px; border: .5px solid #1D9E7550; background: #1D9E7520; color: #9FE1CB; cursor: pointer; transition: all .15s; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.btn-add-extra:hover { background: #1D9E7535; }
+
+/* add form */
+.add-task-form { margin-top: 10px; background: #ffffff08; border: .5px solid #ffffff18; border-radius: 10px; padding: 10px; display: none; }
+.add-task-form.open { display: block; }
+.add-task-form textarea { width: 100%; background: #ffffff0d; border: .5px solid #ffffff25; border-radius: 7px; padding: 8px 10px; font-size: 12px; color: #e8eaf0; outline: none; resize: none; min-height: 60px; font-family: inherit; line-height: 1.5; transition: border-color .15s; }
+.add-task-form textarea:focus { border-color: #ffffff55; }
+.add-task-form textarea::placeholder { color: #6b7080; }
+.status-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.status-label { font-size: 10px; color: #6b7080; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.status-btn { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; border: 1.5px solid transparent; cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent; }
+.status-btn.s-inprogress { background: #378ADD20; color: #93C5FD; border-color: #378ADD40; }
+.status-btn.s-inprogress.sel { background: #378ADD; color: #fff; border-color: #378ADD; }
+.status-btn.s-done { background: #1D9E7520; color: #9FE1CB; border-color: #1D9E7540; }
+.status-btn.s-done.sel { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+.status-btn.s-stop { background: #E24B4A20; color: #FCA5A5; border-color: #E24B4A40; }
+.status-btn.s-stop.sel { background: #E24B4A; color: #fff; border-color: #E24B4A; }
+.form-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+.btn-cancel { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 7px; background: transparent; border: .5px solid #ffffff25; color: #8a8fa8; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.btn-cancel:hover { background: #ffffff10; }
+.btn-save { font-size: 11px; font-weight: 700; padding: 5px 14px; border-radius: 7px; background: #1D9E75; border: none; color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity .15s; }
+.btn-save:hover { opacity: .85; }
+
+/* task list */
+.extras-panel { margin-top: 8px; }
+.task-list, .note-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.task-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border-radius: 8px; background: #ffffff08; border: .5px solid #ffffff12; }
+.task-status-dot { flex-shrink: 0; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-top: 1px; white-space: nowrap; }
+.dot-inprogress { background: #378ADD30; color: #93C5FD; }
+.dot-done { background: #1D9E7530; color: #9FE1CB; }
+.dot-stop { background: #E24B4A30; color: #FCA5A5; }
+.task-text { font-size: 11px; color: #c8ccd8; flex: 1; line-height: 1.5; }
+.task-text.done { text-decoration: line-through; opacity: .45; }
+.item-del { font-size: 12px; color: #6b7080; cursor: pointer; padding: 0 2px; flex-shrink: 0; transition: color .15s; line-height: 1.6; }
+.item-del:hover { color: #F09595; }
+.note-item { display: flex; align-items: flex-start; gap: 7px; padding: 7px 9px; border-radius: 8px; background: #ffffff08; border: .5px solid #ffffff12; }
+.note-dot { width: 6px; height: 6px; border-radius: 50%; background: #378ADD; flex-shrink: 0; margin-top: 4px; }
+.note-body { flex: 1; min-width: 0; }
+.note-text { font-size: 11px; color: #c8ccd8; line-height: 1.4; }
+.note-time { font-size: 9px; color: #6b7080; margin-top: 2px; }
+.empty-state { font-size: 11px; color: #6b7080; text-align: center; padding: 8px 0; font-style: italic; }
+
+/* note quick input */
+.note-quick { display: flex; gap: 6px; margin-top: 6px; }
+.note-inp { flex: 1; background: #ffffff0d; border: .5px solid #ffffff25; border-radius: 7px; padding: 7px 10px; font-size: 12px; color: #e8eaf0; outline: none; min-width: 0; transition: border-color .15s; font-family: inherit; }
+.note-inp:focus { border-color: #ffffff55; }
+.note-inp::placeholder { color: #6b7080; }
+.btn-note-send { font-size: 13px; padding: 6px 11px; border-radius: 7px; border: none; cursor: pointer; background: #378ADD30; color: #B5D4F4; border: .5px solid #378ADD50; transition: all .15s; }
+.btn-note-send:hover { background: #378ADD45; }
+
+
+/* ── TOP EXPORT BAR ── */
+.export-topbar{position:sticky;top:0;z-index:100;background:#0f1117;border-bottom:.5px solid #ffffff15;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin:-20px -14px 16px;padding-left:14px;padding-right:14px;}
+.export-topbar-title{font-size:12px;font-weight:600;color:#8a8fa8;}
+.btn-export-top{font-size:12px;font-weight:700;padding:7px 14px;border-radius:8px;background:#1D9E75;color:#fff;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s;}
+.btn-export-top:active{opacity:.75;}
+@media(min-width:520px){.export-topbar{margin:-24px -20px 18px;padding-left:20px;padding-right:20px;}}
+
+/* ── EXPORT MODAL ── */
+.export-modal-bg{position:fixed;inset:0;background:#00000099;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
+.export-modal-bg.open{display:flex;}
+.export-modal{background:#1a1d27;border:.5px solid #ffffff20;border-radius:16px;padding:24px;width:100%;max-width:340px;}
+.export-modal h3{font-size:15px;font-weight:700;color:#f0f2f8;margin-bottom:6px;}
+.export-modal p{font-size:12px;color:#8a8fa8;margin-bottom:18px;line-height:1.5;}
+.export-options{display:flex;flex-direction:column;gap:10px;}
+.export-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;border:.5px solid #ffffff18;background:#ffffff08;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.export-opt:hover,.export-opt:active{background:#ffffff14;border-color:#ffffff30;}
+.export-opt-icon{font-size:22px;flex-shrink:0;}
+.export-opt-body{flex:1;}
+.export-opt-title{font-size:13px;font-weight:700;color:#e8eaf0;}
+.export-opt-desc{font-size:11px;color:#8a8fa8;margin-top:1px;}
+.btn-modal-close{margin-top:14px;width:100%;padding:8px;border-radius:8px;background:transparent;border:.5px solid #ffffff25;color:#8a8fa8;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-modal-close:hover{background:#ffffff10;}
+
+/* badges */
+.badge{display:inline-block;font-size:clamp(8px,2.2vw,9px);font-weight:600;letter-spacing:.05em;padding:2px 6px;border-radius:4px;text-transform:uppercase;white-space:nowrap;vertical-align:middle;}
+.b-high{background:#E24B4A33;color:#F09595;}.b-med{background:#EF9F2733;color:#FAC775;}
+.b-key{background:#1D9E7533;color:#9FE1CB;}.b-new{background:#7C3AED33;color:#C4B5FD;}
+.footer{margin-top:18px;text-align:center;font-size:clamp(10px,2.8vw,11px);color:#6b7080;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:0 4px;}
+@media(min-width:520px){.tabs{grid-template-columns:repeat(4,1fr);}body{padding:24px 20px 60px;}}
+
+</style>
+</head>
+<body>
+
+<div class="pg on" id="pg-home">
+<div class="home-wrap">
+<div class="home-hd"><div class="ac-badge"><div class="ac-dot"></div><span class="ac-lbl">Atlas Copco</span></div>
+<h1 class="home-title">Scania <em>Brasil</em></h1>
+<p class="home-sub">Key Account &middot; Gestão Estratégica por Fábrica</p></div>
+<div class="fc-grid">
+<div class="fc" style="background:#04221A;border-color:#1D9E7540" onclick="go('chassis')">
+<div class="fc-bar" style="background:linear-gradient(90deg,#1D9E75,#1D9E7577)"></div>
+<div class="fc-inner"><div class="fc-icon" style="color:#1D9E75"><svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><rect x="8" y="34" width="144" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/><rect x="8" y="57" width="144" height="10" rx="3" stroke="currentColor" stroke-width="2.2"/><line x1="32" y1="34" x2="32" y2="67" stroke="currentColor" stroke-width="2"/><line x1="60" y1="34" x2="60" y2="67" stroke="currentColor" stroke-width="2"/><line x1="88" y1="34" x2="88" y2="67" stroke="currentColor" stroke-width="2"/><line x1="120" y1="34" x2="120" y2="67" stroke="currentColor" stroke-width="2"/><line x1="20" y1="67" x2="20" y2="80" stroke="currentColor" stroke-width="2.5"/><circle cx="20" cy="88" r="8" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="88" r="3" fill="currentColor" opacity=".4"/><line x1="140" y1="67" x2="140" y2="80" stroke="currentColor" stroke-width="2.5"/><circle cx="140" cy="88" r="8" stroke="currentColor" stroke-width="2"/><circle cx="140" cy="88" r="3" fill="currentColor" opacity=".4"/><line x1="108" y1="67" x2="108" y2="80" stroke="currentColor" stroke-width="2.5"/><circle cx="108" cy="88" r="8" stroke="currentColor" stroke-width="2"/><circle cx="108" cy="88" r="3" fill="currentColor" opacity=".4"/><path d="M8 34 L8 22 Q8 14 18 14 L46 14" stroke="currentColor" stroke-width="1.8" opacity=".7"/><rect x="46" y="7" width="34" height="27" rx="3" stroke="currentColor" stroke-width="1.8" opacity=".7"/></svg></div>
+<div class="fc-name">Chassis</div><div class="fc-desc">Fábrica de Chassis &middot; Montagem estrutural</div>
+<span class="fc-tag" style="background:#1D9E7520;color:#9FE1CB;border-color:#1D9E7540">Under Construction</span></div></div>
+<div class="fc" style="background:#03192E;border-color:#378ADD40" onclick="go('cab')">
+<div class="fc-bar" style="background:linear-gradient(90deg,#378ADD,#378ADD77)"></div>
+<div class="fc-inner"><div class="fc-icon" style="color:#378ADD"><svg viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><path d="M22 82 L22 44 Q22 31 34 28 L62 19 Q73 15 84 19 L126 28 Q138 31 138 44 L138 82 Z" stroke="currentColor" stroke-width="2.2"/><line x1="22" y1="46" x2="138" y2="46" stroke="currentColor" stroke-width="1.5" opacity=".55"/><rect x="30" y="31" width="36" height="24" rx="3" stroke="currentColor" stroke-width="1.8" opacity=".85"/><rect x="76" y="31" width="36" height="24" rx="3" stroke="currentColor" stroke-width="1.8" opacity=".85"/><path d="M22 82 L22 91 Q22 99 30 99 L130 99 Q138 99 138 91 L138 82" stroke="currentColor" stroke-width="2.2"/><circle cx="39" cy="96" r="8" stroke="currentColor" stroke-width="2"/><circle cx="39" cy="96" r="3" fill="currentColor" opacity=".4"/><circle cx="121" cy="96" r="8" stroke="currentColor" stroke-width="2"/><circle cx="121" cy="96" r="3" fill="currentColor" opacity=".4"/><rect x="62" y="70" width="36" height="12" rx="2" stroke="currentColor" stroke-width="1.5" opacity=".7"/><path d="M22 62 L12 62 L12 76 L22 76" stroke="currentColor" stroke-width="1.8" opacity=".6"/><path d="M138 62 L148 62 L148 76 L138 76" stroke="currentColor" stroke-width="1.8" opacity=".6"/></svg></div>
+<div class="fc-name">Cab</div><div class="fc-desc">Fábrica de Cabinas &middot; Montagem e acabamento</div>
+<span class="fc-tag" style="background:#378ADD20;color:#B5D4F4;border-color:#378ADD40">Under Construction</span></div></div>
+<div class="fc" style="background:#231A04;border-color:#EF9F2740" onclick="go('transmission')">
+<div class="fc-bar" style="background:linear-gradient(90deg,#EF9F27,#EF9F2777)"></div>
+<div class="fc-inner"><div class="fc-icon" style="color:#EF9F27"><svg viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><rect x="32" y="22" width="96" height="66" rx="7" stroke="currentColor" stroke-width="2.2"/><circle cx="65" cy="55" r="20" stroke="currentColor" stroke-width="2"/><circle cx="65" cy="55" r="7" stroke="currentColor" stroke-width="1.8" opacity=".7"/><circle cx="104" cy="55" r="13" stroke="currentColor" stroke-width="2"/><circle cx="104" cy="55" r="4.5" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="4" y1="55" x2="32" y2="55" stroke="currentColor" stroke-width="2.5" opacity=".85"/><rect x="1" y="48" width="9" height="14" rx="2" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.8"/><line x1="128" y1="55" x2="156" y2="55" stroke="currentColor" stroke-width="2.5" opacity=".85"/><rect x="150" y="48" width="9" height="14" rx="2" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.8"/><line x1="65" y1="35" x2="65" y2="28" stroke="currentColor" stroke-width="2.2" opacity=".7"/><line x1="65" y1="75" x2="65" y2="82" stroke="currentColor" stroke-width="2.2" opacity=".7"/><line x1="45" y1="44" x2="40" y2="40" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="45" y1="66" x2="40" y2="70" stroke="currentColor" stroke-width="1.8" opacity=".7"/></svg></div>
+<div class="fc-name">Transmission</div><div class="fc-desc">Fábrica de Transmissões &middot; Caixas e eixos</div>
+<span class="fc-tag" style="background:#EF9F2720;color:#FAC775;border-color:#EF9F2740">Under Construction</span></div></div>
+<div class="fc" style="background:#220808;border-color:#E24B4A40" onclick="go('engine')">
+<div class="fc-bar" style="background:linear-gradient(90deg,#E24B4A,#E24B4A77)"></div>
+<div class="fc-inner"><div class="fc-icon" style="color:#E24B4A"><svg viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><rect x="24" y="42" width="98" height="46" rx="5" stroke="currentColor" stroke-width="2.2"/><rect x="34" y="22" width="16" height="22" rx="3" stroke="currentColor" stroke-width="2" opacity=".9"/><rect x="58" y="22" width="16" height="22" rx="3" stroke="currentColor" stroke-width="2" opacity=".9"/><rect x="82" y="22" width="16" height="22" rx="3" stroke="currentColor" stroke-width="2" opacity=".9"/><line x1="42" y1="24" x2="42" y2="42" stroke="currentColor" stroke-width="2.2" opacity=".75"/><line x1="66" y1="24" x2="66" y2="42" stroke="currentColor" stroke-width="2.2" opacity=".75"/><line x1="90" y1="24" x2="90" y2="42" stroke="currentColor" stroke-width="2.2" opacity=".75"/><line x1="24" y1="66" x2="122" y2="66" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5,3" opacity=".4"/><path d="M28 88 Q73 96 118 88" stroke="currentColor" stroke-width="1.8" opacity=".6"/><circle cx="142" cy="52" r="11" stroke="currentColor" stroke-width="2" opacity=".9"/><path d="M131 52 L142 44 L142 60 Z" fill="currentColor" opacity=".5"/><line x1="131" y1="52" x2="122" y2="52" stroke="currentColor" stroke-width="2"/><line x1="142" y1="41" x2="142" y2="27" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3,2" opacity=".55"/><rect x="5" y="48" width="19" height="9" rx="2" stroke="currentColor" stroke-width="1.8" opacity=".75"/><line x1="24" y1="52" x2="5" y2="52" stroke="currentColor" stroke-width="1.8" opacity=".55"/></svg></div>
+<div class="fc-name">Engine</div><div class="fc-desc">Fábrica de Motores &middot; Bloco, cabeçote e testes</div>
+<span class="fc-tag" style="background:#E24B4A20;color:#FCA5A5;border-color:#E24B4A40">Under Construction</span></div></div>
+<div class="fc fc-wide" style="background:#160A2A;border-color:#7C3AED40" onclick="go('swot')">
+<div class="fc-bar" style="background:linear-gradient(90deg,#7C3AED,#5B21B6)"></div>
+<div class="fc-inner"><div class="fc-icon" style="color:#7C3AED"><svg viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"><rect x="6" y="6" width="68" height="44" rx="5" stroke="currentColor" stroke-width="2" opacity=".9"/><rect x="86" y="6" width="68" height="44" rx="5" stroke="currentColor" stroke-width="2" opacity=".9"/><rect x="6" y="60" width="68" height="44" rx="5" stroke="currentColor" stroke-width="2" opacity=".9"/><rect x="86" y="60" width="68" height="44" rx="5" stroke="currentColor" stroke-width="2" opacity=".9"/><line x1="12" y1="22" x2="66" y2="22" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="12" y1="30" x2="56" y2="30" stroke="currentColor" stroke-width="1.2" opacity=".4"/><line x1="12" y1="36" x2="48" y2="36" stroke="currentColor" stroke-width="1.2" opacity=".4"/><line x1="92" y1="22" x2="146" y2="22" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="92" y1="30" x2="136" y2="30" stroke="currentColor" stroke-width="1.2" opacity=".4"/><line x1="12" y1="76" x2="66" y2="76" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="12" y1="84" x2="56" y2="84" stroke="currentColor" stroke-width="1.2" opacity=".4"/><line x1="92" y1="76" x2="146" y2="76" stroke="currentColor" stroke-width="1.8" opacity=".7"/><line x1="92" y1="84" x2="136" y2="84" stroke="currentColor" stroke-width="1.2" opacity=".4"/><line x1="80" y1="2" x2="80" y2="108" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity=".2"/><line x1="2" y1="54" x2="158" y2="54" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity=".2"/></svg></div>
+<div><div class="fc-name" style="font-size:clamp(15px,4.5vw,20px)">SWOT SLA Geral</div>
+<div class="fc-desc">Análise estratégica completa &middot; Todas as fábricas &middot; Ações SMART &middot; Tarefas &amp; Notas</div>
+<span class="fc-tag" style="background:#7C3AED20;color:#C4B5FD;border-color:#7C3AED40">Completo &#10003;</span></div></div></div>
+</div></div></div>
+
+<div class="pg" id="pg-chassis">
+<div class="topbar"><button class="btn-back" style="color:#9FE1CB;border-color:#1D9E7550;background:#1D9E7520" onclick="go('home')">&#8592; Voltar</button><span class="tb-title">SWOT · Chassis</span><button class="btn-exp" onclick="openExport()">&#8595; Exportar</button></div>
+<div class="app">
+<div class="tabs"><div class="tab tab-s active" id="tab-chassis-s" onclick="switchFac('chassis','s')">&#128170; For&#231;as</div><div class="tab tab-w" id="tab-chassis-w" onclick="switchFac('chassis','w')">&#9888;&#65039; Fraquezas</div><div class="tab tab-o" id="tab-chassis-o" onclick="switchFac('chassis','o')">&#128640; Oportunidades</div><div class="tab tab-t" id="tab-chassis-t" onclick="switchFac('chassis','t')">&#128293; Amea&#231;as</div></div>
+<div class="panel panel-s active" id="panel-chassis-s"><div class="panel-label">For&#231;as — Strengths</div><div class="grp"><div class="grp-title">Posição Comercial</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Liderança em ferramentas de chassis <span class="badge b-key">chave</span></div><div class="item-desc">Alta penetração nos processos de fixação estrutural da linha de chassis.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="c-s1a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear 100% dos pontos de torque do chassis e cobertura AC</div>Levantar cada ponto de fixação estrutural e identificar onde há gap de cobertura — em 30 dias.</div></div></div>
+<div class="action act-manter" data-aid="c-s1a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Apresentar relatório de savings mensal para a equipe de chassis</div>Consolidar R$ economizados e ganhos de qualidade por processo — entrega mensal.</div></div></div>
+</div></div>
+<div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Soluções de torque crítico para longarinas <span class="badge b-key">chave</span></div><div class="item-desc">Ferramentas com rastreabilidade garantem conformidade nas uniões estruturais do frame.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="c-s2a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Demonstrar rastreabilidade de torque nos pontos críticos do frame</div>Apresentar relatório de torque por VIN para a engenharia de chassis — em 45 dias.</div></div></div>
+<div class="action act-manter" data-aid="c-s2a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Revisitar especificações de torque a cada novo modelo de chassis</div>Garantir presença na fase de engenharia para cada nova variante — ciclo por lançamento.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Suporte Técnico</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Engenharia dedicada ao processo de chassis <span class="badge b-key">chave</span></div><div class="item-desc">Equipe de aplicação presente no chão de fábrica para suporte contínuo.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-manter" data-aid="c-s3a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Realizar visita técnica semanal à linha de chassis</div>Agenda fixa de presença — registrar ações e oportunidades identificadas.</div></div></div>
+<div class="action act-dominar" data-aid="c-s3a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Propor co-desenvolvimento de solução para ponto crítico da longarina</div>Identificar o processo mais complexo e propor projeto conjunto com a engenharia.</div></div></div>
+</div></div>
+</div>
+
+<div id="forcas-list"></div>
+<div style="margin-top:12px;padding:12px;background:#04221A;border:.5px solid #1D9E7540;border-radius:10px">
+<p style="font-size:10px;font-weight:700;color:#5DCAA5;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">+ Nova For&#231;a</p>
+<input id="forcas-inp" style="width:100%;background:#ffffff08;border:.5px solid #1D9E7540;border-radius:7px;padding:9px 11px;font-size:13px;color:#e8eaf0;outline:none;font-family:inherit;margin-bottom:8px" placeholder="Descreva a nova for&#231;a..." onkeydown="if(event.key==='Enter'){event.preventDefault();forcasSave();}">
+<div style="display:flex;justify-content:flex-end">
+<button onclick="event.stopPropagation();forcasSave()" style="font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;background:#1D9E75;color:#fff;border:none;cursor:pointer">&#128190; Salvar</button>
+</div></div></div>
+<div class="panel panel-w " id="panel-chassis-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Portfólio</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Ausência de ferramenta simples para operações básicas do chassis <span class="badge b-high">crítico</span></div><div class="item-desc">Operações de menor criticidade ainda usam concorrente por custo.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="c-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear operações básicas do chassis sem cobertura AC</div>Listar processos onde concorrente está instalado por custo — em 30 dias.</div></div></div>
+<div class="action act-melhorar" data-aid="c-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Avaliar bundle de entrada para operações de baixa criticidade</div>Propor pacote econômico ou parceria para fechar o gap — em 60 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Execução</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Prazo em ferramentas especiais para chassis <span class="badge b-high">crítico</span></div><div class="item-desc">Projetos de adaptação de ferramentas para geometrias específicas de frame geram atrasos.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="c-w2a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar cronograma com alertas de desvio para projetos especiais de chassis</div>Template de acompanhamento com milestones — obrigatório no próximo projeto.</div></div></div>
+<div class="action act-melhorar" data-aid="c-w2a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar protocolo de comunicação proativa ao cliente em caso de risco de prazo</div>Aviso mínimo 24h antes com plano alternativo — formalizar agora.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-o " id="panel-chassis-o"><div class="panel-label">Oportunidades — Opportunities</div><div class="grp"><div class="grp-title">Crescimento</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Novos modelos de chassis elétrico e híbrido Scania <span class="badge b-key">prioritário</span></div><div class="item-desc">Eletrificação exige novos pontos de fixação e novos processos — janela de especificação.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="c-o1a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Identificar projetos de chassis EV em fase de especificação</div>Mapear com a engenharia os novos modelos em desenvolvimento — próxima visita.</div></div></div>
+<div class="action act-aproveitar" data-aid="c-o1a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar proposta de solução integrada para chassis EV</div>Proposta SW+HW+Service para os novos pontos de fixação da bateria — em 60 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Tecnologia</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Smart Integrated Assembly na linha de chassis <span class="badge b-key">prioritário</span></div><div class="item-desc">Rastreabilidade por VIN e dados em tempo real são diferenciais crescentes.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="c-o2a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar piloto de torque conectado para 3 pontos críticos do frame</div>Demonstração com dados em tempo real para a engenharia — em 90 dias.</div></div></div>
+<div class="action act-aproveitar" data-aid="c-o2a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Mapear maturidade digital da linha para roadmap de Smart Assembly</div>Identificar processos prontos para integração — roadmap em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-t " id="panel-chassis-t"><div class="panel-label">Amea&#231;as — Threats</div><div class="grp"><div class="grp-title">Competição</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Concorrentes com preço menor para fixações não estruturais do chassis <span class="badge b-high">crítico</span></div><div class="item-desc">Processos de menor criticidade são vulneráveis à entrada por preço.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="c-t1a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar argumento de TCO para fixações não estruturais do chassis</div>Planilha comparando custo total AC vs concorrente — disponível em 30 dias.</div></div></div>
+<div class="action act-mitigar" data-aid="c-t1a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Aprofundar relacionamento com engenharia para blindar especificações</div>Garantir que AC esteja na especificação técnica de todo processo — ação contínua.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Risco Corporativo</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Diretriz Grupo VW impondo fornecedor alternativo no chassis <span class="badge b-high">crítico</span></div><div class="item-desc">Acordos corporativos podem sobrepor preferência técnica local.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="c-t2a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar ROI e savings do chassis para criar resistência interna</div>Evidências concretas que a engenharia possa usar contra imposição corporativa.</div></div></div>
+<div class="action act-mitigar" data-aid="c-t2a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Escalar risco à liderança AC para ação em nível de Grupo VW</div>Relatório de risco com dados do chassis — entregar à diretoria em 30 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="footer"><span class="badge b-high">cr&#237;tico</span> <span class="badge b-med">aten&#231;&#227;o</span> <span class="badge b-key">chave</span></div>
+</div>
+</div>
+
+
+<div class="pg" id="pg-cab">
+<div class="topbar"><button class="btn-back" style="color:#B5D4F4;border-color:#378ADD50;background:#378ADD20" onclick="go('home')">&#8592; Voltar</button><span class="tb-title">SWOT · Cab</span><button class="btn-exp" onclick="openExport()">&#8595; Exportar</button></div>
+<div class="app">
+<div class="tabs"><div class="tab tab-s active" id="tab-cab-s" onclick="switchFac('cab','s')">&#128170; For&#231;as</div><div class="tab tab-w" id="tab-cab-w" onclick="switchFac('cab','w')">&#9888;&#65039; Fraquezas</div><div class="tab tab-o" id="tab-cab-o" onclick="switchFac('cab','o')">&#128640; Oportunidades</div><div class="tab tab-t" id="tab-cab-t" onclick="switchFac('cab','t')">&#128293; Amea&#231;as</div></div>
+<div class="panel panel-s active" id="panel-cab-s"><div class="panel-label">For&#231;as — Strengths</div><div class="grp"><div class="grp-title">Posição Comercial</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Ferramentas ergonômicas para montagem de cabina <span class="badge b-key">chave</span></div><div class="item-desc">Portfolio com soluções pensadas para o espaço restrito e operações repetitivas da linha de cab.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-manter" data-aid="b-s1a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Validar ergonomia das ferramentas atuais com operadores da linha de cab</div>Entrevista e observação no chão de fábrica — próxima semana.</div></div></div>
+<div class="action act-dominar" data-aid="b-s1a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Apresentar proposta de ferramenta balanceada para ponto de fixação do painel</div>Reduzir esforço repetitivo com solução balanceada — proposta em 45 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Qualidade e Rastreabilidade</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Rastreabilidade de torque em fixadores de segurança da cabina <span class="badge b-key">chave</span></div><div class="item-desc">Parafusos de airbag, cintos e estrutura da cab são safety-critical — rastreabilidade obrigatória.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="b-s2a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear 100% dos pontos safety-critical da cabina com cobertura AC</div>Levantamento por estação de montagem — entregar à engenharia em 30 dias.</div></div></div>
+<div class="action act-manter" data-aid="b-s2a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Apresentar relatório de NOK (não-conformidades) zerado por processo</div>Consolidar dados mensais de qualidade por ponto de fixação da cab.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-w " id="panel-cab-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Portfólio</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Custo elevado em operações de acabamento interno da cabina <span class="badge b-high">crítico</span></div><div class="item-desc">Processos de fixação de plásticos e acabamentos sofrem pressão de preço.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="b-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear processos de acabamento com maior pressão de custo na cab</div>Identificar onde concorrente entra por preço — levantamento em 30 dias.</div></div></div>
+<div class="action act-melhorar" data-aid="b-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Avaliar solução de menor custo para fixações de baixa criticidade da cabina</div>Bundle econômico ou ferramenta simplificada para acabamentos — avaliar em 60 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Relacionamento</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Acesso limitado ao gestor de produção da fábrica de cab <span class="badge b-med">atenção</span></div><div class="item-desc">Relacionamento concentrado no nível técnico, sem acesso à chefia de linha.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="b-w2a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear gestores de produção e supervisores da linha de cab</div>Criar mapa de stakeholders operacionais da fábrica — em 30 dias.</div></div></div>
+<div class="action act-melhorar" data-aid="b-w2a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Usar resultado de qualidade como pauta para reunião com gestor de produção</div>Solicitar reunião com apresentação de dados de NOK zerado — em 45 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-o " id="panel-cab-o"><div class="panel-label">Oportunidades — Opportunities</div><div class="grp"><div class="grp-title">Novos Projetos</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Novo design de cabina Scania — janela de especificação <span class="badge b-key">prioritário</span></div><div class="item-desc">Atualizações de cab criam oportunidade de especificar ferramentas desde o início.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="b-o1a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Identificar projetos de nova cabina em fase de engenharia</div>Mapear com time técnico da cab os modelos em desenvolvimento — próxima visita.</div></div></div>
+<div class="action act-aproveitar" data-aid="b-o1a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Garantir presença AC na fase de especificação de fixadores da nova cab</div>Formalizar inclusão nas reuniões de engenharia de produto — em 30 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Tecnologia</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Smart Integrated Assembly para safety-critical da cabina <span class="badge b-key">prioritário</span></div><div class="item-desc">Conectividade e dados em tempo real são exigidos para rastreabilidade de segurança.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="b-o2a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Piloto de torque conectado nos 5 pontos de airbag da cabina</div>Demonstração com dados em tempo real — apresentar à engenharia em 90 dias.</div></div></div>
+<div class="action act-aproveitar" data-aid="b-o2a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Propor integração dos dados de torque com o MES da fábrica de cab</div>Roadmap de integração SW+MES — apresentar em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-t " id="panel-cab-t"><div class="panel-label">Amea&#231;as — Threats</div><div class="grp"><div class="grp-title">Competição</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Concorrentes com preço menor para fixações de acabamento da cab <span class="badge b-high">crítico</span></div><div class="item-desc">Operações de plásticos e painéis perdem para concorrente em custo.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="b-t1a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar argumento de TCO para todo processo de acabamento da cabina</div>Comparativo custo total incluindo retrabalho e qualidade — em 30 dias.</div></div></div>
+<div class="action act-mitigar" data-aid="b-t1a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Apresentar casos de falha de concorrente em processos similares</div>Repositório de NOK de concorrente para usar em negociações — em 30 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Risco Corporativo</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Imposição de fornecedor pelo Grupo VW na fábrica de cab <span class="badge b-high">crítico</span></div><div class="item-desc">Diretriz corporativa pode sobrepor a preferência técnica da equipe de cab.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="b-t2a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar savings e NOK zerado da cabina como evidência de valor</div>Material concreto para a engenharia usar contra imposição corporativa.</div></div></div>
+<div class="action act-mitigar" data-aid="b-t2a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Escalar risco do cab à liderança AC para ação corporativa</div>Relatório com dados da fábrica de cab — entregar à diretoria em 30 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="footer"><span class="badge b-high">cr&#237;tico</span> <span class="badge b-med">aten&#231;&#227;o</span> <span class="badge b-key">chave</span></div>
+</div>
+</div>
+
+
+<div class="pg" id="pg-transmission">
+<div class="topbar"><button class="btn-back" style="color:#FAC775;border-color:#EF9F2750;background:#EF9F2720" onclick="go('home')">&#8592; Voltar</button><span class="tb-title">SWOT · Transmission</span><button class="btn-exp" onclick="openExport()">&#8595; Exportar</button></div>
+<div class="app">
+<div class="tabs"><div class="tab tab-s active" id="tab-transmission-s" onclick="switchFac('transmission','s')">&#128170; For&#231;as</div><div class="tab tab-w" id="tab-transmission-w" onclick="switchFac('transmission','w')">&#9888;&#65039; Fraquezas</div><div class="tab tab-o" id="tab-transmission-o" onclick="switchFac('transmission','o')">&#128640; Oportunidades</div><div class="tab tab-t" id="tab-transmission-t" onclick="switchFac('transmission','t')">&#128293; Amea&#231;as</div></div>
+<div class="panel panel-s active" id="panel-transmission-s"><div class="panel-label">For&#231;as — Strengths</div><div class="grp"><div class="grp-title">Precisão e Qualidade</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Referência global em torque de precisão para transmissões <span class="badge b-key">chave</span></div><div class="item-desc">Processos de montagem de caixa de câmbio exigem torque crítico — AC é referência Scania Europa.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="t-s1a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Apresentar cases de transmissões Scania Europa com dados de qualidade</div>Solicitar ao time global 3 cases documentados — receber em 30 dias.</div></div></div>
+<div class="action act-manter" data-aid="t-s1a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Entregar relatório mensal de qualidade por estação de montagem da transmissão</div>Consolidar dados de NOK e Cpk por ponto de torque — entrega mensal.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Portfólio Integrado</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Solução SW+HW para rastreabilidade total da transmissão <span class="badge b-key">chave</span></div><div class="item-desc">Integração de dados de torque com MES garante conformidade de cada unidade produzida.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="t-s2a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear estações da transmissão com e sem integração SW</div>Levantar gap de integração por estação — mapeamento em 30 dias.</div></div></div>
+<div class="action act-dominar" data-aid="t-s2a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Propor pacote de integração completa para a linha de transmissão</div>Proposta SW+HW+integração MES — apresentar em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-w " id="panel-transmission-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Prazo e Execução</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Atraso em ferramentas especiais para geometrias da caixa de câmbio <span class="badge b-high">crítico</span></div><div class="item-desc">Adaptações para espaços restritos da transmissão têm lead time elevado.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="t-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar cronograma com alertas para projetos especiais da transmissão</div>Template obrigatório com milestones e responsáveis — aplicar no próximo projeto.</div></div></div>
+<div class="action act-melhorar" data-aid="t-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar protocolo de comunicação proativa para riscos de prazo</div>Aviso mínimo 24h com alternativa — formalizar agora.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Portfólio</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Custo elevado em operações de subconjunto da transmissão <span class="badge b-med">atenção</span></div><div class="item-desc">Montagem de componentes secundários da caixa sofre pressão de preço.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="t-w2a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Identificar processos de subconjunto com maior pressão de custo</div>Mapear onde concorrente compete por preço — em 30 dias.</div></div></div>
+<div class="action act-melhorar" data-aid="t-w2a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Avaliar bundle econômico para subconjuntos da transmissão</div>Proposta de pacote de menor custo para processos secundários — em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-o " id="panel-transmission-o"><div class="panel-label">Oportunidades — Opportunities</div><div class="grp"><div class="grp-title">Eletrificação</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Transmissões elétricas e híbridas — novos processos Scania <span class="badge b-key">prioritário</span></div><div class="item-desc">Eletro-mobilidade cria novos conjuntos de fixação e torques críticos diferentes.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="t-o1a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Identificar projetos de e-transmission em fase de especificação na Scania</div>Mapear com a engenharia os novos projetos — próxima visita técnica.</div></div></div>
+<div class="action act-aproveitar" data-aid="t-o1a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar proposta de solução para montagem de e-axle e bateria</div>Proposta completa para os novos processos elétricos — em 60 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Smart Assembly</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Smart Integrated Assembly para linha de transmissão <span class="badge b-key">prioritário</span></div><div class="item-desc">Dados em tempo real e Cpk automático são diferenciais críticos nesta linha.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="t-o2a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Piloto de torque conectado com Cpk em tempo real na linha de transmissão</div>Demonstração nas 3 estações mais críticas — em 90 dias.</div></div></div>
+<div class="action act-aproveitar" data-aid="t-o2a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Propor integração dos dados de torque com o sistema de qualidade da transmissão</div>Roadmap de integração — apresentar em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-t " id="panel-transmission-t"><div class="panel-label">Amea&#231;as — Threats</div><div class="grp"><div class="grp-title">Competição Especializada</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Concorrentes especializados em ferramentas de transmissão <span class="badge b-high">crítico</span></div><div class="item-desc">Alguns concorrentes têm foco exclusivo em transmissões com preço competitivo.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="t-t1a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar comparativo técnico AC vs concorrentes especializados em transmissão</div>Benchmarking objetivo de qualidade, precisão e suporte — em 60 dias.</div></div></div>
+<div class="action act-mitigar" data-aid="t-t1a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Fortalecer relacionamento técnico com engenharia da transmissão</div>Visita semanal + workshop semestral — agenda fixa a partir desta semana.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Risco Corporativo</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Padronização Grupo VW impondo ferramenta alternativa na transmissão <span class="badge b-high">crítico</span></div><div class="item-desc">Processos de transmissão têm alto risco de imposição corporativa.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="t-t2a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar Cpk e savings da transmissão como evidência incontestável</div>Relatório técnico com dados de qualidade — entregar à engenharia e à diretoria.</div></div></div>
+<div class="action act-mitigar" data-aid="t-t2a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Usar cases da Scania Europa como argumento de padronização global AC</div>Mostrar que a própria corporação usa AC em outras plantas — próxima reunião.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="footer"><span class="badge b-high">cr&#237;tico</span> <span class="badge b-med">aten&#231;&#227;o</span> <span class="badge b-key">chave</span></div>
+</div>
+</div>
+
+
+<div class="pg" id="pg-engine">
+<div class="topbar"><button class="btn-back" style="color:#FCA5A5;border-color:#E24B4A50;background:#E24B4A20" onclick="go('home')">&#8592; Voltar</button><span class="tb-title">SWOT · Engine</span><button class="btn-exp" onclick="openExport()">&#8595; Exportar</button></div>
+<div class="app">
+<div class="tabs"><div class="tab tab-s active" id="tab-engine-s" onclick="switchFac('engine','s')">&#128170; For&#231;as</div><div class="tab tab-w" id="tab-engine-w" onclick="switchFac('engine','w')">&#9888;&#65039; Fraquezas</div><div class="tab tab-o" id="tab-engine-o" onclick="switchFac('engine','o')">&#128640; Oportunidades</div><div class="tab tab-t" id="tab-engine-t" onclick="switchFac('engine','t')">&#128293; Amea&#231;as</div></div>
+<div class="panel panel-s active" id="panel-engine-s"><div class="panel-label">For&#231;as — Strengths</div><div class="grp"><div class="grp-title">Precisão Crítica</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Referência em torque de motor — processos safety-critical <span class="badge b-key">chave</span></div><div class="item-desc">Cabeçote, bielas e bloco têm torques absolutamente críticos — AC é fornecedor preferido da engenharia.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="e-s1a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Apresentar cases de motores Scania com zero NOK em torques críticos</div>Consolidar dados históricos de qualidade do motor — apresentar em 30 dias.</div></div></div>
+<div class="action act-manter" data-aid="e-s1a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Entregar relatório mensal de Cpk por ponto crítico do motor</div>Consolidar Cpk de cabeçote, bielas e bloco — entrega mensal à engenharia.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Tecnologia e Integração</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Software de rastreabilidade integrado à linha de motores <span class="badge b-key">chave</span></div><div class="item-desc">Dados de torque por número de motor garantem conformidade e rastreabilidade total.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-dominar" data-aid="e-s2a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear estações do motor com e sem integração de dados</div>Levantar gap de SW por estação — mapeamento em 30 dias.</div></div></div>
+<div class="action act-dominar" data-aid="e-s2a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Propor integração completa dos dados de torque com o MES do motor</div>Roadmap SW+MES — apresentar à engenharia em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-w " id="panel-engine-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Qualidade em Projetos Especiais</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Problemas de qualidade em ferramentas especiais para o motor <span class="badge b-high">crítico</span></div><div class="item-desc">Adaptações para espaços restritos do motor (cabeçote, coletor) geraram não-conformidades.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="e-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar quality gate antes de cada entrega especial para o motor</div>Checklist técnico obrigatório com aprovação formal — aplicar no próximo projeto.</div></div></div>
+<div class="action act-melhorar" data-aid="e-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar plano de ação corretiva em 48h para qualquer NOK do motor</div>Procedimento de resposta rápida com responsável definido — formalizar em 15 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Percepção de Imagem</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Impacto do contrato de serviços perdido na fábrica de motores <span class="badge b-med">atenção</span></div><div class="item-desc">Equipe de motores pode ter percepção negativa da AC como fornecedor.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="e-w2a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Preparar narrativa positiva sobre o episódio para uso na fábrica de motores</div>Script objetivo com foco nos resultados de ferramentas — pronto em 15 dias.</div></div></div>
+<div class="action act-melhorar" data-aid="e-w2a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Reforçar resultados de qualidade do motor como contraargumento</div>One-pager com Cpk e NOK zerado para apresentar em todas as reuniões.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-o " id="panel-engine-o"><div class="panel-label">Oportunidades — Opportunities</div><div class="grp"><div class="grp-title">Novos Motores</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Novos motores Scania (HVO, H2, elétrico) — fase de especificação <span class="badge b-key">prioritário</span></div><div class="item-desc">Novos propulsores criam processos inéditos de montagem — oportunidade de especificar AC.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="e-o1a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Identificar projetos de novos propulsores em fase de engenharia</div>Mapear com a engenharia do motor os novos projetos — próxima visita.</div></div></div>
+<div class="action act-aproveitar" data-aid="e-o1a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar proposta para montagem dos novos propulsores Scania</div>Proposta completa SW+HW+Service para novos motores — em 60 dias.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Smart Assembly</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Smart Integrated Assembly para linha de motores <span class="badge b-key">prioritário</span></div><div class="item-desc">Análise de dados de torque em tempo real e alertas automáticos de desvio.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-aproveitar" data-aid="e-o2a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Piloto de Smart Assembly nos pontos críticos do cabeçote</div>Demo com dados em tempo real + alertas de NOK — em 90 dias.</div></div></div>
+<div class="action act-aproveitar" data-aid="e-o2a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Propor integração dos dados de motor com o sistema de teste final</div>Roadmap de integração torque + teste de banco — apresentar em 60 dias.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="panel panel-t " id="panel-engine-t"><div class="panel-label">Amea&#231;as — Threats</div><div class="grp"><div class="grp-title">Competição</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Concorrentes com preço menor em fixações auxiliares do motor <span class="badge b-high">crítico</span></div><div class="item-desc">Processos de acessórios e sistemas auxiliares do motor sofrem pressão de custo.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="e-t1a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar argumento de TCO para processos auxiliares do motor</div>Planilha comparando custo total incluindo qualidade e retrabalho — em 30 dias.</div></div></div>
+<div class="action act-mitigar" data-aid="e-t1a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Fortalecer presença na engenharia do motor para blindar especificações</div>Visita semanal + case técnico mensal — agenda fixa.</div></div></div>
+</div></div>
+</div>
+<div class="grp"><div class="grp-title">Risco Corporativo</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Diretriz Grupo VW impondo fornecedor alternativo no motor <span class="badge b-high">crítico</span></div><div class="item-desc">Motor é o processo de maior risco de imposição corporativa pela criticidade.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-mitigar" data-aid="e-t2a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar Cpk e savings do motor como evidência técnica incontestável</div>Relatório técnico detalhado — entregar à engenharia e diretoria em 30 dias.</div></div></div>
+<div class="action act-mitigar" data-aid="e-t2a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Usar cases de motores Scania Europa como argumento de padronização</div>Apresentar que o grupo já usa AC em motores na Europa — próxima reunião.</div></div></div>
+</div></div>
+</div>
+</div>
+<div class="footer"><span class="badge b-high">cr&#237;tico</span> <span class="badge b-med">aten&#231;&#227;o</span> <span class="badge b-key">chave</span></div>
+</div>
+</div>
+
+
+<div class="pg" id="pg-swot">
+<div class="topbar"><button class="btn-back" style="color:#C4B5FD;border-color:#7C3AED50;background:#7C3AED20" onclick="go('home')">&#8592; Voltar</button><span class="tb-title">SWOT SLA Geral</span><button class="btn-exp" onclick="openExport()">&#8595; Exportar</button></div>
+<div class="app">
+  <div class="app-header">
+    <h2>SWOT + Ações SMART<br>Atlas Copco × Scania Brasil</h2>
+    <p>Toque em cada item para ver as ações · Adicione tarefas e notas em cada ação</p>
+  </div>
+  <div class="tabs">
+    <div class="tab tab-s active" onclick="switchTab('s')">💪 Forças</div>
+    <div class="tab tab-w" onclick="switchTab('w')">⚠️ Fraquezas</div>
+    <div class="tab tab-o" onclick="switchTab('o')">🚀 Oportunidades</div>
+    <div class="tab tab-t" onclick="switchTab('t')">🔥 Ameaças</div>
+  </div>
+
+  <!-- ===== FORÇAS ===== -->
+  <div class="panel panel-s active" id="panel-s">
+    <div class="panel-label">Forças — Strengths · ação: Manter ou Dominar</div>
+    <div class="grp"><div class="grp-title">Posição Comercial</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Liderança de mercado — 75% de share <span class="badge b-key">chave</span></div><div class="item-desc">Posição dominante nas 4 fábricas. Difícil de reverter no curto prazo com relacionamento técnico estabelecido.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s1a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear os 25% restantes por fábrica</div>Identificar quais processos e ferramentas ainda estão com concorrentes em cada unidade — entregar mapa de gaps até o final do próximo mês.</div></div></div>
+        <div class="action act-manter" data-aid="s1a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Implementar Business Review trimestral com dados de share</div>Apresentar ao time de compras um painel com share por fábrica, evolução e resultados — a partir do próximo trimestre.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Modelo de venda em pacotes</div><div class="item-desc">Neutraliza concorrência de preço unitário. Aumenta ticket médio por fábrica.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s2a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Criar 1 proposta de pacote customizado por fábrica (4 no total)</div>Elaborar proposta específica para Chassis, Motores, Transmissões e Cabinas — concluir em 60 dias.</div></div></div>
+        <div class="action act-manter" data-aid="s2a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Revisitar pacotes existentes a cada 6 meses</div>Incluir novos itens, atualizar cobertura e identificar processos descobertos — ciclo semestral com registro formal.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Apresentação de savings comprovados <span class="badge b-key">chave</span></div><div class="item-desc">Capacidade de demonstrar retorno financeiro concreto. Transforma custo em investimento justificado.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s3a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Criar template padrão de Saving Report e pilotar em 1 fábrica</div>Desenvolver modelo com R$ economizados, produtividade e qualidade — apresentar piloto no próximo mês.</div></div></div>
+        <div class="action act-dominar" data-aid="s3a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Expandir Saving Report para as 4 fábricas com apresentação trimestral</div>Agendar reunião de apresentação com compras e área técnica de cada fábrica — até o final do semestre.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Qualidade, Tecnologia & Portfólio Integrado</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Qualidade e tecnologia superiores — preço competitivo</div><div class="item-desc">Custo maior justificado por qualidade e durabilidade. Concorrentes mais baratos geram problemas com custo oculto.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s4a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Documentar 3 casos de problemas gerados por concorrentes na Scania</div>Registrar falhas, atrasos e custos ocultos e compilar em material de comparativo TCO — em 30 dias.</div></div></div>
+        <div class="action act-manter" data-aid="s4a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Criar material de benchmarking técnico AC vs concorrentes</div>Desenvolver comparativo objetivo (qualidade, durabilidade, suporte) para negociações — concluir em 60 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Portfólio integrado: Software + Hardware + Service <span class="badge b-key">chave</span></div><div class="item-desc">Solução completa nas 3 dimensões — diferencial que fornecedores menores não conseguem replicar.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s5a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear penetração das 3 camadas por fábrica e identificar gaps</div>Levantar quais fábricas utilizam SW+HW+Service de forma integrada — concluir em 30 dias.</div></div></div>
+        <div class="action act-dominar" data-aid="s5a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Apresentar proposta de solução integrada completa para a fábrica com menor penetração</div>Montar proposta de pacote SW+HW+Service customizado para o processo mais crítico — apresentar em 90 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Capacidade Técnica & Acompanhamento</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Departamento de engenharia grande e dedicado <span class="badge b-key">chave</span></div><div class="item-desc">Principal diferencial percebido pela área técnica. Gera preferência genuína além da relação comercial.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s6a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Agendar 1 visita técnica da equipe de engenharia por fábrica por semestre</div>Organizar visitas presenciais com o engenheiro responsável em cada unidade — próxima em até 45 dias.</div></div></div>
+        <div class="action act-dominar" data-aid="s6a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Co-desenvolver 1 solução técnica específica para um processo Scania</div>Identificar gargalo técnico em uma das fábricas e propor desenvolvimento conjunto — projeto iniciado em 90 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Acompanhamento de projetos + garantia de entrega <span class="badge b-key">chave</span></div><div class="item-desc">Concorrentes não oferecem esse suporte. A ausência no mercado valida e diferencia a proposta Atlas Copco.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-manter" data-aid="s7a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Criar checklist de acompanhamento de projeto compartilhado com o cliente</div>Documento de status visível para a Scania com milestones, responsáveis e prazos — implementar no próximo projeto.</div></div></div>
+        <div class="action act-dominar" data-aid="s7a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Documentar 2 casos de sucesso de entrega para usar como referência</div>Registrar projetos entregues no prazo e formatar como case — em 30 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Proximidade com a área técnica da Scania</div><div class="item-desc">Relacionamento no chão de fábrica. Influência nas especificações e decisões de compra.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-manter" data-aid="s8a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Manter frequência mínima de 1 visita técnica semanal por fábrica</div>Estruturar agenda fixa de rotina nas 4 unidades — registrar visitas semanalmente.</div></div></div>
+        <div class="action act-dominar" data-aid="s8a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Organizar 1 workshop técnico por semestre nas instalações da Scania</div>Propor evento de demonstração ou treinamento com a equipe de engenharia — próximo em até 90 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Estrutura de Atendimento & Relacionamento</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Vendedor técnico dedicado (key account) <span class="badge b-key">chave</span></div><div class="item-desc">Presença contínua no complexo. Antecipa demandas e responde rapidamente a oportunidades.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-manter" data-aid="s9a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Estruturar agenda semanal de visitas com cobertura das 4 fábricas</div>Criar rotina documentada de presença nas unidades — implementar e registrar a partir desta semana.</div></div></div>
+        <div class="action act-dominar" data-aid="s9a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Preparar relatório mensal de oportunidades identificadas</div>Documentar processos em aberto, feedbacks do cliente e movimentos da concorrência — primeiro relatório ao final do mês.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Contato próximo ao time de compras <span class="badge b-new">novo</span></div><div class="item-desc">Relacionamento ativo com compradores facilita agilidade nas negociações e antecipa processos licitatórios.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-manter" data-aid="s10a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Agendar reunião mensal formal com o time de compras de cada fábrica</div>Estabelecer encontro recorrente para atualização de pipeline e alinhamento de projetos — iniciar no próximo mês.</div></div></div>
+        <div class="action act-dominar" data-aid="s10a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Mapear todos os contatos de compras e garantir relacionamento ativo com ao menos 2 por fábrica</div>Criar mapa de stakeholders de compras das 4 fábricas — concluir em 30 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Líderes de projetos dedicados</div><div class="item-desc">Suporte especializado por projeto. Aumenta confiança do cliente em entregas complexas.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-manter" data-aid="s11a1"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Realizar kickoff formal com líder de projeto para todo projeto especial</div>Implementar reunião de início com apresentação do líder dedicado ao contato Scania — obrigatório a partir do próximo projeto.</div></div></div>
+        <div class="action act-manter" data-aid="s11a2"><div class="action-top"><div class="act-pill">Manter</div><div class="act-body"><div class="act-what">Implementar reunião quinzenal de status entre líder de projeto e contato Scania</div>Estabelecer cadência de alinhamento durante todo o ciclo do projeto para antecipar desvios.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Portfólio global — projetos Scania Europa <span class="badge b-key">chave</span></div><div class="item-desc">Referências em outras fábricas Scania no mundo. Argumento de padronização e confiança global.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-dominar" data-aid="s12a1"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Levantar 3 business cases documentados de fábricas Scania na Europa</div>Solicitar ao time global da AC materiais com resultados quantificados — entrega interna em 30 dias.</div></div></div>
+        <div class="action act-dominar" data-aid="s12a2"><div class="action-top"><div class="act-pill">Dominar</div><div class="act-body"><div class="act-what">Apresentar ao menos 1 case europeu por trimestre em reunião formal com Scania Brasil</div>Incluir referência de Scania Europa em toda reunião trimestral de business review — a partir do próximo encontro.</div></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ===== FRAQUEZAS ===== -->
+  <div class="panel panel-w" id="panel-w">
+    <div class="panel-label">Fraquezas — Weaknesses · ação: Melhorar</div>
+    <div class="grp"><div class="grp-title">Influência do Grupo VW</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Scania pertence ao Grupo VW — risco de diretriz corporativa <span class="badge b-high">crítico</span></div><div class="item-desc">O Grupo VW tem firmado acordos com concorrentes. Projetos foram perdidos no Brasil por imposição do grupo.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Escalar o risco formalmente à liderança Atlas Copco Brasil e Global</div>Documentar casos de perda por imposição do Grupo VW e apresentar à diretoria em 30 dias, solicitando estratégia de relacionamento corporativo.</div></div></div>
+        <div class="action act-melhorar" data-aid="w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Fortalecer relacionamento técnico a ponto de gerar resistência interna na Scania</div>Aprofundar dependência técnica e savings para que a área técnica tenha argumentos sólidos contra imposições corporativas — revisão trimestral.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Histórico de perda de projetos via Grupo VW no Brasil <span class="badge b-high">crítico</span></div><div class="item-desc">Não é hipótese — já aconteceu. O precedente aumenta a probabilidade de repetição.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w2a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Documentar os projetos perdidos e apresentar à liderança Atlas Copco</div>Registrar causas, valores, concorrentes beneficiados e padrão de atuação — relatório entregue à diretoria em 30 dias.</div></div></div>
+        <div class="action act-melhorar" data-aid="w2a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar monitoramento mensal de acordos do Grupo VW com ferramenteiros</div>Estabelecer rotina de inteligência competitiva para rastrear movimentos do grupo — implementar a partir deste mês.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Acesso à Alta Gestão</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Dificuldade de acesso a VP e Gerente de Compras local <span class="badge b-high">crítico</span> <span class="badge b-new">novo</span></div><div class="item-desc">Relacionamento concentrado nos níveis técnico e operacional. Sem acesso à alta gestão, decisões estratégicas chegam sem defesa.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w3a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear nomes, cargos e perfis dos VPs e Gerentes de Compras das 4 fábricas</div>Criar mapa de stakeholders de alta gestão com estratégia de acesso por perfil — concluir em 30 dias.</div></div></div>
+        <div class="action act-melhorar" data-aid="w3a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Usar o Saving Report consolidado como pretexto para reunião formal com a alta gestão</div>Solicitar apresentação de resultados anuais ao Gerente de Compras ou VP — agendar em até 60 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Portfólio & Execução</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Ausência de soluções simples para processos básicos <span class="badge b-high">crítico</span></div><div class="item-desc">Onde não é necessária tecnologia avançada, o portfólio não compete em custo. Abre porta para concorrentes menores.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w4a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear os 5 processos críticos onde AC não tem solução simples</div>Levantar processos básicos das 4 fábricas sem cobertura e formalizar para a área de portfólio — em 60 dias.</div></div></div>
+        <div class="action act-melhorar" data-aid="w4a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Avaliar bundle de entrada ou parceria para cobrir processos básicos</div>Investigar possibilidade de oferta simplificada que mantenha a Scania no ecossistema AC — avaliação em 90 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Problemas de prazo em projetos especiais <span class="badge b-high">crítico</span></div><div class="item-desc">Atrasos têm impacto direto na linha de produção da Scania. Prazo é tão crítico quanto qualidade.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w5a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar cronograma formal com milestones e alertas de desvio em todos os projetos especiais</div>Criar template de gestão de projeto com datas, responsáveis e gatilhos de alerta — obrigatório a partir do próximo projeto.</div></div></div>
+        <div class="action act-melhorar" data-aid="w5a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar protocolo de comunicação proativa ao cliente em caso de risco de atraso</div>Aviso obrigatório ao cliente com antecedência mínima de 24h e plano alternativo — implementar agora.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Problemas de qualidade em projetos especiais <span class="badge b-high">crítico</span></div><div class="item-desc">Mesmo pontuais, falhas colocam em risco contratos futuros e a reputação técnica construída.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w6a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar quality gate obrigatório antes da entrega de todo projeto especial</div>Checklist de revisão técnica com aprovação formal antes de qualquer entrega especial.</div></div></div>
+        <div class="action act-melhorar" data-aid="w6a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Estabelecer plano de ação corretiva com prazo máximo de 48h para não-conformidades</div>Procedimento de resposta rápida com responsável definido e prazo de retorno ao cliente — formalizar em 15 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Reputação & Concentração</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Contrato de serviços perdido — risco de imagem <span class="badge b-med">atenção</span></div><div class="item-desc">O cliente percebe a AC como um todo. O episódio pode ser usado pela concorrência junto a novos decisores.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w7a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Preparar narrativa clara e positiva sobre o episódio</div>Construir resposta objetiva que contextualize o caso e reforce resultados da área de peças — pronto em 15 dias.</div></div></div>
+        <div class="action act-melhorar" data-aid="w7a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Solicitar briefing do time de serviços sobre o ocorrido e ações corretivas tomadas</div>Ter informação completa para responder com segurança quando o assunto surgir — briefing em 10 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Alta concentração em um único cliente</div><div class="item-desc">Resultado fortemente atrelado à Scania. Mudanças no cliente têm impacto direto e imediato.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-melhorar" data-aid="w8a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Desenvolver pipeline de ao menos 2 novos clientes de porte similar em 6 meses</div>Identificar outras montadoras ou indústrias no entorno e iniciar prospecção ativa — 1º contato qualificado até fim do trimestre.</div></div></div>
+        <div class="action act-melhorar" data-aid="w8a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Dedicar ao menos 20% do tempo semanal a atividades fora da Scania</div>Estruturar agenda com bloco fixo para prospecção e visitas externas — implementar a partir da próxima semana.</div></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ===== OPORTUNIDADES ===== -->
+  <div class="panel panel-o" id="panel-o">
+    <div class="panel-label">Oportunidades — Opportunities · ação: Aproveitar</div>
+    <div class="grp"><div class="grp-title">Crescimento de Share</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Capturar os 25% de share restantes <span class="badge b-key">prioritário</span></div><div class="item-desc">Com presença e relacionamento nas 4 fábricas, há vantagem clara de posição para avançar sobre o espaço da concorrência.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o1a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Mapear por fábrica quais processos estão com concorrentes e criar plano de ataque priorizado</div>Levantar ferramenta a ferramenta onde a concorrência está instalada e ordenar por valor — mapa em 30 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o1a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Definir meta de +5% de share por semestre com ação específica por fábrica</div>Estabelecer OKR interno com fábrica-alvo, processo-alvo e responsável por período — formalizar no próximo ciclo.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Pacotes específicos por fábrica (Chassis, Motores, Transmissões, Cabinas)</div><div class="item-desc">Proposta customizada por unidade eleva fit, dificulta comparação e aumenta o valor percebido.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o2a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Elaborar proposta de pacote customizado para a fábrica com maior potencial</div>Selecionar fábrica com maior gap de share e montar proposta com processos mapeados — apresentar em 45 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o2a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Realizar mapeamento de necessidades por fábrica a cada trimestre</div>Agendar reunião de alinhamento de processos com área técnica de cada unidade — a partir do próximo trimestre.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Alavancagem de Diferenciais</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Formalizar savings regularmente como argumento de defesa <span class="badge b-key">prioritário</span></div><div class="item-desc">Relatórios periódicos criam evidência concreta do valor entregue.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o3a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Criar e apresentar Saving Report piloto para 1 fábrica no próximo mês</div>Desenvolver template com R$ economizados, ganhos de produtividade e qualidade — apresentação formal em até 30 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o3a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Expandir para as 4 fábricas com cadência trimestral até o final do semestre</div>Agenda fixa de apresentação por fábrica com presença de compras e engenharia — calendário definido em 60 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Problemas dos concorrentes viram argumento de venda <span class="badge b-key">prioritário</span></div><div class="item-desc">Falhas de concorrentes na Scania são evidências vivas do custo oculto de trocar de fornecedor.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o4a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Registrar todos os casos de falha da concorrência e compilar documento interno</div>Criar repositório de casos com descrição, impacto e fábrica — atualizado mensalmente.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o4a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Usar esses casos em todas as próximas negociações e apresentações de renovação</div>Incorporar 1 caso de falha da concorrência em cada proposta como argumento de risco de troca.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Leverage dos projetos globais Scania Europa <span class="badge b-key">prioritário</span></div><div class="item-desc">Scania Brasil tende a seguir padrões do grupo. Cases europeus são argumento de confiança e padronização.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o5a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Solicitar ao time global 3 cases documentados de Scania Europa com resultados</div>Acionar o time global da AC para levantar materiais com dados concretos — receber em 30 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o5a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar ao menos 1 case europeu por trimestre em reunião formal com Scania Brasil</div>Incluir referência de Scania Europa em toda reunião trimestral de business review.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Expandir influência técnica nas 4 fábricas</div><div class="item-desc">Aprofundar dependência técnica aumenta barreiras de saída para o cliente.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o6a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Propor 1 workshop técnico por semestre junto à engenharia Scania</div>Planejar evento de demonstração ou treinamento técnico em uma das fábricas — próximo em 90 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o6a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Identificar 2 novos contatos técnicos por fábrica para ampliar a rede</div>Mapear engenheiros e técnicos-chave ainda não contatados nas 4 unidades — primeiros 2 por fábrica em 60 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Mercado e Tecnologia</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Smart Integrated Assembly — montagem conectada e inteligente <span class="badge b-new">atualizado</span></div><div class="item-desc">Ferramentas conectadas, rastreabilidade de torque e dados de processo são diferenciais crescentes na manufatura automotiva.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o7a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Mapear quais processos da Scania estão prontos para integração digital</div>Identificar por fábrica os processos com maior maturidade para Smart Integrated Assembly — roadmap em 60 dias.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o7a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Apresentar demo ou case de solução conectada para 1 fábrica piloto</div>Organizar demonstração de torque rastreado com dados em tempo real junto à área técnica — em 90 dias.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Novos projetos de linha e lançamentos na Scania</div><div class="item-desc">Atualizações de linha exigem revisão de processos e ferramentas — momento ideal para apresentar novas soluções.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-aproveitar" data-aid="o8a1"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Monitorar novos projetos de desenvolvimento de veículos na Scania mensalmente</div>Criar rotina de alinhamento mensal com a área técnica para identificar projetos em fase de especificação.</div></div></div>
+        <div class="action act-aproveitar" data-aid="o8a2"><div class="action-top"><div class="act-pill">Aproveitar</div><div class="act-body"><div class="act-what">Garantir presença na fase de especificação técnica de todo novo projeto identificado</div>Solicitar inclusão formal da AC nas reuniões de especificação de novos projetos — formalizar em 30 dias.</div></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ===== AMEAÇAS ===== -->
+  <div class="panel panel-t" id="panel-t">
+    <div class="panel-label">Ameaças — Threats · ação: Mitigar</div>
+    <div class="grp"><div class="grp-title">Risco Estrutural — Grupo VW</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Acordos globais do Grupo VW com concorrentes <span class="badge b-high">crítico</span></div><div class="item-desc">A maior ameaça estrutural. Uma decisão corporativa pode sobrepor a preferência técnica da Scania Brasil.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t1a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Escalar formalmente à diretoria AC com dados e solicitar estratégia global de contraposição</div>Entregar relatório de risco documentado à liderança Brasil e Global em 30 dias.</div></div></div>
+        <div class="action act-mitigar" data-aid="t1a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Aprofundar dependência técnica e savings para que a Scania tenha argumentos contra qualquer imposição</div>Garantir que a área técnica tenha dados concretos de ROI e risco de migração documentados — revisão trimestral.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Histórico de perda de projetos no Brasil via Grupo VW <span class="badge b-high">crítico</span></div><div class="item-desc">Não é hipótese — já aconteceu. O precedente aumenta a probabilidade de repetição.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t2a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar timeline dos projetos perdidos e padrão de atuação do grupo</div>Registrar quando, como e qual concorrente foi beneficiado para identificar padrão — em 30 dias.</div></div></div>
+        <div class="action act-mitigar" data-aid="t2a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar alerta de inteligência competitiva com monitoramento mensal de acordos do Grupo VW</div>Definir fontes de monitoramento e estabelecer reporte mensal à liderança — implementar a partir deste mês.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Pressão Competitiva</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Concorrência de preço em processos básicos <span class="badge b-high">crítico</span></div><div class="item-desc">Concorrentes menores encontram brechas onde AC não tem solução simples. Preço vira o único critério.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t3a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar argumento de TCO (Custo Total de Propriedade) para cada processo básico ameaçado</div>Desenvolver planilha de TCO comparando AC vs concorrente incluindo durabilidade, suporte e custo de falha — disponível em 30 dias.</div></div></div>
+        <div class="action act-mitigar" data-aid="t3a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Avaliar oferta de bundle de entrada para processos básicos em 90 dias</div>Investigar produto simplificado ou parceria que mantenha a Scania no ecossistema AC.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Contrato de serviços perdido como argumento da concorrência <span class="badge b-med">atenção</span></div><div class="item-desc">Concorrentes podem usar o episódio para questionar confiabilidade geral da AC junto a novos decisores.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t4a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Preparar resposta padrão proativa para quando o assunto surgir em negociações</div>Construir script objetivo contextualizando o caso e redirecionando para resultados da área de peças — pronto em 15 dias.</div></div></div>
+        <div class="action act-mitigar" data-aid="t4a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Usar savings e resultados de peças como contraargumento documentado</div>Ter sempre um one-pager com resultados concretos da parceria de peças — preparar em 20 dias.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Riscos de Relacionamento</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Troca de stakeholders e decisores na Scania <span class="badge b-high">crítico</span></div><div class="item-desc">Relacionamento concentrado em pessoas específicas. Mudança de gestão pode neutralizar anos de capital construído.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t5a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Mapear todos os decisores-chave e garantir ao menos 2 contatos por área crítica em cada fábrica</div>Criar mapa de stakeholders completo com nome, cargo, área e nível de relacionamento AC — atualizado trimestralmente.</div></div></div>
+        <div class="action act-mitigar" data-aid="t5a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Documentar histórico de projetos e resultados para apresentar rapidamente a qualquer novo decisor</div>Criar deck de onboarding de relacionamento com histórico, saving reports e cases — atualizado semestralmente.</div></div></div>
+      </div></div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Falhas em projetos especiais aproveitadas pela concorrência</div><div class="item-desc">Cada atraso ou problema de qualidade é abertura para o concorrente plantar dúvidas junto ao gestor.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t6a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Implementar recovery plan proativo para toda falha antes que o cliente acione a concorrência</div>Protocolo de resposta imediata com plano de correção apresentado ao cliente em até 24h após qualquer falha.</div></div></div>
+        <div class="action act-mitigar" data-aid="t6a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Após cada falha, agendar reunião de revisão com o cliente para reforçar comprometimento</div>Reunião obrigatória com responsável técnico da Scania em até 72h após encerramento do problema.</div></div></div>
+      </div></div>
+    </div>
+    <div class="grp"><div class="grp-title">Risco Macro</div>
+      <div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Retração do setor automotivo</div><div class="item-desc">Redução de volumes leva ao corte de investimentos em ferramentas e projetos.</div></div><div class="chevron">▼</div></div>
+      <div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">⚡ Ações SMART</div>
+        <div class="action act-mitigar" data-aid="t7a1"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Criar portfólio de ferramentas essenciais priorizado para períodos de corte de budget</div>Definir lista de produtos indispensáveis para manutenção da linha Scania que não podem ser cortados — disponível em 60 dias.</div></div></div>
+        <div class="action act-mitigar" data-aid="t7a2"><div class="action-top"><div class="act-pill">Mitigar</div><div class="act-body"><div class="act-what">Iniciar diversificação da carteira para reduzir dependência do ciclo automotivo</div>Prospectar ao menos 1 cliente em setor diferente (energia, mineração, aviação) — primeiro contato qualificado em 90 dias.</div></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="badge b-high">crítico</span>
+    <span class="badge b-med">atenção</span>
+    <span class="badge b-key">chave / prioritário</span>
+    <span class="badge b-new">novo / atualizado</span>
+  </div>
+</div>
+
+
+
+
+
+<!-- Export Modal -->
+<div class="export-modal-bg" id="export-modal" onclick="if(event.target===this)closeExport()">
+  <div class="export-modal">
+    <h3>Exportar SWOT</h3>
+    <p>Escolha o formato. Tarefas e notas salvas serão incluídas na exportação.</p>
+    <div class="export-options">
+      <div class="export-opt" onclick="exportPDF()">
+        <div class="export-opt-icon">📄</div>
+        <div class="export-opt-body">
+          <div class="export-opt-title">PDF</div>
+          <div class="export-opt-desc">Documento formatado para apresentação ou impressão</div>
+        </div>
+      </div>
+      <div class="export-opt" onclick="exportExcel()">
+        <div class="export-opt-icon">📊</div>
+        <div class="export-opt-body">
+          <div class="export-opt-title">Excel (.xlsx)</div>
+          <div class="export-opt-desc">Planilha com resumo e detalhamento por quadrante</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-modal-close" onclick="closeExport()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<div class="export-modal-bg" id="export-modal" onclick="if(event.target===this)closeExport()">
+  <div class="export-modal">
+    <h3>Exportar SWOT</h3>
+    <p>Escolha o formato. Tarefas e notas salvas serão incluídas na exportação.</p>
+    <div class="export-options">
+      <div class="export-opt" onclick="exportPDF()">
+        <div class="export-opt-icon">📄</div>
+        <div class="export-opt-body">
+          <div class="export-opt-title">PDF</div>
+          <div class="export-opt-desc">Documento formatado para apresentação ou impressão</div>
+        </div>
+      </div>
+      <div class="export-opt" onclick="exportExcel()">
+        <div class="export-opt-icon">📊</div>
+        <div class="export-opt-body">
+          <div class="export-opt-title">Excel (.xlsx)</div>
+          <div class="export-opt-desc">Planilha com resumo e detalhamento por quadrante</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-modal-close" onclick="closeExport()">Cancelar</button>
+  </div>
+</div>
+
+<script>
+
+function switchFac(prefix, q) {
+  ['s','w','o','t'].forEach(function(x) {
+    var p = document.getElementById('panel-' + prefix + '-' + x);
+    var t = document.getElementById('tab-'   + prefix + '-' + x);
+    if(p) p.classList.remove('active');
+    if(t) t.classList.remove('active');
+  });
+  var ap = document.getElementById('panel-' + prefix + '-' + q);
+  var at = document.getElementById('tab-'   + prefix + '-' + q);
+  if(ap) ap.classList.add('active');
+  if(at) at.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+var PAGES = ['home','chassis','cab','transmission','engine','swot'];
+var swotInited = false;
+function go(id) {
+  PAGES.forEach(function(p){ document.getElementById('pg-'+p).classList.remove('on'); });
+  document.getElementById('pg-'+id).classList.add('on');
+  window.scrollTo(0,0);
+  if(id==='chassis'){setTimeout(forcasRender,30);}
+  if(id === 'swot' && !swotInited) {
+    swotInited = true;
+    document.querySelectorAll('.action[data-aid]').forEach(function(el){ renderExtras(el.dataset.aid); });
+  }
+}
+
+// ── Nav ──────────────────────────────────────────────
+function switchTab(q){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab-'+q).classList.add('active');
+  document.getElementById('panel-'+q).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function toggle(card){
+  const wasOpen=card.classList.contains('open');
+  card.closest('.panel').querySelectorAll('.item-card.open').forEach(c=>c.classList.remove('open'));
+  if(!wasOpen){card.classList.add('open');setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
+}
+
+// ── Storage ──────────────────────────────────────────
+function load(aid){
+  try{return JSON.parse(localStorage.getItem('swot_'+aid))||{tasks:[],notes:[]};}
+  catch(e){return{tasks:[],notes:[]};}
+}
+function save(aid,data){localStorage.setItem('swot_'+aid,JSON.stringify(data));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function timeAgo(ts){
+  const d=Math.floor((Date.now()-ts)/1000);
+  if(d<60)return 'agora';if(d<3600)return Math.floor(d/60)+'min';
+  if(d<86400)return Math.floor(d/3600)+'h';if(d<604800)return Math.floor(d/86400)+'d';
+  return new Date(ts).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+
+// ── Render ───────────────────────────────────────────
+const STATUS_LABELS = {inprogress:'In Progress', done:'Done', stop:'Stop'};
+const STATUS_CLASS  = {inprogress:'dot-inprogress', done:'dot-done', stop:'dot-stop'};
+
+function renderExtras(aid){
+  const el=document.querySelector('.action[data-aid="'+aid+'"]');
+  if(!el)return;
+  const data=load(aid);
+  let ext=el.querySelector('.action-extras');
+  if(!ext){ext=document.createElement('div');ext.className='action-extras';el.appendChild(ext);}
+
+  const tc=data.tasks.length, nc=data.notes.length;
+  const formOpen=ext.querySelector('.add-task-form.open')!=null;
+  const noteOpen=ext.querySelector('.note-quick')!=null && ext.querySelector('.extras-panel') && ext.querySelector('.extras-panel').style.display!=='none';
+
+  ext.innerHTML=`
+    <div class="extras-bar">
+      <div class="extras-counts">
+        <span class="count-pill count-tasks" onclick="toggleExtrasPanel('${aid}',event)">✓ ${tc} tarefa${tc!==1?'s':''}</span>
+        <span class="count-pill count-notes" onclick="toggleExtrasPanel('${aid}',event)">💬 ${nc} nota${nc!==1?'s':''}</span>
+      </div>
+      <button class="btn-add-extra" onclick="openAddForm('${aid}',event)">+ Tarefa</button>
+    </div>
+
+    <div class="add-task-form" id="form-${aid}">
+      <textarea id="ftxt-${aid}" placeholder="Descreva a tarefa..." rows="2"></textarea>
+      <div class="status-row">
+        <span class="status-label">Status:</span>
+        <button class="status-btn s-inprogress sel" id="fs-${aid}-inprogress" onclick="selStatus('${aid}','inprogress')">🔵 In Progress</button>
+        <button class="status-btn s-done" id="fs-${aid}-done" onclick="selStatus('${aid}','done')">🟢 Done</button>
+        <button class="status-btn s-stop" id="fs-${aid}-stop" onclick="selStatus('${aid}','stop')">🔴 Stop</button>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeAddForm('${aid}')">Cancelar</button>
+        <button class="btn-save" onclick="saveTask('${aid}')">💾 Salvar Tarefa</button>
+      </div>
+    </div>
+
+    <div class="extras-panel" id="panel-ext-${aid}" style="display:none">
+      <div id="tasklist-${aid}">${renderTaskList(aid,data)}</div>
+      <div class="note-quick">
+        <input class="note-inp" id="ninp-${aid}" placeholder="Adicionar nota / comentário..." onkeydown="if(event.key==='Enter')saveNote('${aid}')">
+        <button class="btn-note-send" onclick="saveNote('${aid}')">💬</button>
+      </div>
+      <div id="notelist-${aid}" style="margin-top:6px">${renderNoteList(aid,data)}</div>
+    </div>`;
+
+  // restore open states
+  if(formOpen) openAddFormDirect(aid);
+}
+
+function renderTaskList(aid,data){
+  if(!data.tasks.length)return '<div class="empty-state">Nenhuma tarefa ainda</div>';
+  return '<div class="task-list">'+data.tasks.map(t=>`
+    <div class="task-item" style="border-color:${t.status==='done'?'#1D9E7580':t.status==='stop'?'#E24B4A80':'#378ADD80'}">
+      <span class="task-status-dot ${STATUS_CLASS[t.status]||'dot-inprogress'}">${STATUS_LABELS[t.status]||'In Progress'}</span>
+      <span class="task-text${t.status==='done'?' done':''}">${esc(t.text)}</span>
+      <span class="item-del" onclick="delTask('${aid}','${t.id}',event)">✕</span>
+    </div>`).join('')+'</div>';
+}
+
+function renderNoteList(aid,data){
+  if(!data.notes.length)return '';
+  return '<div class="note-list">'+data.notes.map(n=>`
+    <div class="note-item">
+      <div class="note-dot"></div>
+      <div class="note-body"><div class="note-text">${esc(n.text)}</div><div class="note-time">${timeAgo(n.at)}</div></div>
+      <span class="item-del" onclick="delNote('${aid}','${n.id}',event)">✕</span>
+    </div>`).join('')+'</div>';
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── UI Actions ───────────────────────────────────────
+function openAddForm(aid,e){
+  if(e)e.stopPropagation();
+  openAddFormDirect(aid);
+}
+function openAddFormDirect(aid){
+  const f=document.getElementById('form-'+aid);
+  if(f){f.classList.add('open');setTimeout(()=>{const t=document.getElementById('ftxt-'+aid);if(t)t.focus();},50);}
+}
+function closeAddForm(aid){
+  const f=document.getElementById('form-'+aid);
+  if(f)f.classList.remove('open');
+}
+
+let _selectedStatus={};
+function selStatus(aid,s){
+  _selectedStatus[aid]=s;
+  ['inprogress','done','stop'].forEach(x=>{
+    const b=document.getElementById('fs-'+aid+'-'+x);
+    if(b)b.classList.toggle('sel',x===s);
+  });
+}
+
+function saveTask(aid){
+  const txt=document.getElementById('ftxt-'+aid);
+  if(!txt||!txt.value.trim())return;
+  const status=_selectedStatus[aid]||'inprogress';
+  const data=load(aid);
+  data.tasks.push({id:uid(),text:txt.value.trim(),status,at:Date.now()});
+  save(aid,data);
+  renderExtras(aid);
+  // show panel after save
+  const p=document.getElementById('panel-ext-'+aid);
+  if(p)p.style.display='block';
+}
+
+function toggleExtrasPanel(aid,e){
+  if(e)e.stopPropagation();
+  const p=document.getElementById('panel-ext-'+aid);
+  if(!p)return;
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+function saveNote(aid){
+  const inp=document.getElementById('ninp-'+aid);
+  if(!inp||!inp.value.trim())return;
+  const data=load(aid);
+  data.notes.push({id:uid(),text:inp.value.trim(),at:Date.now()});
+  save(aid,data);
+  const p=document.getElementById('panel-ext-'+aid);
+  const wasOpen=p&&p.style.display!=='none';
+  renderExtras(aid);
+  if(wasOpen){const p2=document.getElementById('panel-ext-'+aid);if(p2)p2.style.display='block';}
+}
+
+function delTask(aid,tid,e){
+  e.stopPropagation();
+  const data=load(aid);
+  data.tasks=data.tasks.filter(x=>x.id!==tid);
+  save(aid,data);
+  const p=document.getElementById('panel-ext-'+aid);
+  const wasOpen=p&&p.style.display!=='none';
+  renderExtras(aid);
+  if(wasOpen){const p2=document.getElementById('panel-ext-'+aid);if(p2)p2.style.display='block';}
+}
+function delNote(aid,nid,e){
+  e.stopPropagation();
+  const data=load(aid);
+  data.notes=data.notes.filter(x=>x.id!==nid);
+  save(aid,data);
+  const p=document.getElementById('panel-ext-'+aid);
+  const wasOpen=p&&p.style.display!=='none';
+  renderExtras(aid);
+  if(wasOpen){const p2=document.getElementById('panel-ext-'+aid);if(p2)p2.style.display='block';}
+}
+
+// ── Export ───────────────────────────────────────────
+function openExport(){document.getElementById('export-modal').classList.add('open');}
+function closeExport(){document.getElementById('export-modal').classList.remove('open');}
+
+function getAllSWOTData(){
+  const quadrants=[
+    {id:'s',label:'Forças'},
+    {id:'w',label:'Fraquezas'},
+    {id:'o',label:'Oportunidades'},
+    {id:'t',label:'Ameaças'}
+  ];
+  const result=[];
+  quadrants.forEach(q=>{
+    document.querySelectorAll('#panel-'+q.id+' .action[data-aid]').forEach(el=>{
+      const aid=el.dataset.aid;
+      const what=el.querySelector('.act-what')?el.querySelector('.act-what').textContent.trim():'';
+      const pill=el.querySelector('.act-pill')?el.querySelector('.act-pill').textContent.trim():'';
+      const data=load(aid);
+      result.push({quadrant:q.label, tipo:pill, acao:what, aid, tasks:data.tasks, notes:data.notes});
+    });
+  });
+  return result;
+}
+
+// ── PDF Export ───────────────────────────────────────
+function exportPDF(){
+  var data = getAllSWOTData();
+  var rows = '';
+  var curQ = '';
+  data.forEach(function(row){
+    if(row.quadrant !== curQ){
+      curQ = row.quadrant;
+      rows += '<tr><td colspan="3" style="padding:6px 8px;font-weight:800;font-size:11px;border-top:2px solid #000;border-bottom:1px solid #ccc;text-transform:uppercase;letter-spacing:.06em">' + curQ + '</td></tr>';
+    }
+    var tasks = ''; var notes = '';
+    row.tasks.forEach(function(t){ tasks += '<div style="font-size:10px;margin-bottom:2px">[' + (STATUS_LABELS[t.status]||'') + '] ' + t.text + '</div>'; });
+    row.notes.forEach(function(n){ notes += '<div style="font-size:10px;color:#555;margin-bottom:2px">&#x25CB; ' + n.text + '</div>'; });
+    rows += '<tr><td style="padding:5px 8px;font-size:11px;border-bottom:.5px solid #e0e0e0;width:12%">' + row.tipo + '</td><td style="padding:5px 8px;font-size:11px;border-bottom:.5px solid #e0e0e0;width:52%">' + row.acao + '</td><td style="padding:5px 8px;font-size:11px;border-bottom:.5px solid #e0e0e0;width:36%">' + tasks + notes + '</td></tr>';
+  });
+  var win = window.open('','_blank');
+  if(!win){alert('Permita pop-ups para exportar o PDF.');return;}
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SWOT Atlas Copco x Scania</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#000;font-size:12px;}h1{font-size:15px;margin-bottom:4px;}p{font-size:11px;color:#555;margin-bottom:14px;}table{width:100%;border-collapse:collapse;}th{text-align:left;padding:5px 8px;border-bottom:2px solid #000;font-size:10px;text-transform:uppercase;letter-spacing:.05em;}@media print{@page{margin:10mm;size:A4 portrait;}button{display:none!important;}}</style></head><body><h1>SWOT + A&ccedil;&otilde;es SMART &mdash; Atlas Copco &times; Scania Brasil</h1><p>Key Account &middot; Chassis &middot; Transmiss&otilde;es &middot; Motores &middot; Cabinas &middot; Gerado em ' + new Date().toLocaleDateString('pt-BR') + '</p><button onclick="window.print()" style="margin-bottom:14px;padding:8px 18px;background:#000;color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer">&#128438; Imprimir / Salvar PDF</button><table><thead><tr><th style="width:12%">Tipo</th><th style="width:52%">A&ccedil;&atilde;o SMART</th><th style="width:36%">Tarefas &amp; Notas</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>');
+  win.document.close();
+}
+
+
+function exportExcel(){
+  if(!window.XLSX){exportCSV();return;}
+  var XLSX = window.XLSX;
+  var wb = XLSX.utils.book_new();
+  var data = getAllSWOTData();
+  var sum = [['Quadrante','Tipo','Ação SMART','Tarefas (total)','In Progress','Done','Stop','Notas']];
+  data.forEach(function(r){
+    var ip=r.tasks.filter(function(t){return t.status==='inprogress';}).length;
+    var dn=r.tasks.filter(function(t){return t.status==='done';}).length;
+    var st=r.tasks.filter(function(t){return t.status==='stop';}).length;
+    sum.push([r.quadrant, r.tipo, r.acao, r.tasks.length, ip, dn, st, r.notes.length]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(sum);
+  ws['!cols'] = [{wch:14},{wch:12},{wch:60},{wch:14},{wch:13},{wch:8},{wch:8},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumo');
+  var detail = [['Quadrante','Tipo','Ação SMART','Tarefa / Nota','Status','Data']];
+  data.forEach(function(r){
+    if(!r.tasks.length && !r.notes.length){ detail.push([r.quadrant,r.tipo,r.acao,'','','']); }
+    r.tasks.forEach(function(t){ detail.push([r.quadrant,r.tipo,r.acao,t.text,STATUS_LABELS[t.status]||'In Progress',new Date(t.at).toLocaleDateString('pt-BR')]); });
+    r.notes.forEach(function(n){ detail.push([r.quadrant,r.tipo,r.acao,n.text,'Nota',new Date(n.at).toLocaleDateString('pt-BR')]); });
+  });
+  var ws2 = XLSX.utils.aoa_to_sheet(detail);
+  ws2['!cols'] = [{wch:14},{wch:12},{wch:55},{wch:55},{wch:14},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhamento');
+  XLSX.writeFile(wb,'SWOT_AtlasCopco_Scania.xlsx');
+}
+
+
+function exportCSV(){
+  const data=getAllSWOTData();
+  const rows=[['Quadrante','Tipo','Ação','Tarefa/Nota','Status','Data']];
+  data.forEach(row=>{
+    if(!row.tasks.length&&!row.notes.length){rows.push([row.quadrant,row.tipo,row.acao,'','','']);}
+    row.tasks.forEach(t=>rows.push([row.quadrant,row.tipo,row.acao,t.text,STATUS_LABELS[t.status]||'',new Date(t.at).toLocaleDateString('pt-BR')]));
+    row.notes.forEach(n=>rows.push([row.quadrant,row.tipo,row.acao,n.text,'Nota',new Date(n.at).toLocaleDateString('pt-BR')]));
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+(String(c).replace(/"/g,'""'))+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='SWOT_AtlasCopco_Scania.csv';a.click();
+}
+
+// ── Init ─────────────────────────────────────────────
+forcasRender();
+</script>
+</body>
+</html>
