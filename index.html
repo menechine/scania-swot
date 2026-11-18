@@ -4,49 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atlas Copco × Scania Brasil</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous">
-function forcasSave(){
-  var inp=document.getElementById('forcas-inp');
-  if(!inp||!inp.value.trim()){if(inp)inp.focus();return;}
-  var text=inp.value.trim();
-  var key='chassis_forcas';
-  var arr=[];
-  try{var raw=localStorage.getItem(key);arr=raw?JSON.parse(raw):[];}catch(e){arr=[];}
-  arr.push({id:'f'+Date.now().toString(36),text:text});
-  try{localStorage.setItem(key,JSON.stringify(arr));}catch(e){alert('Erro ao salvar: '+e.message);return;}
-  inp.value='';
-  forcasRender();
-}
-function forcasRender(){
-  var cont=document.getElementById('forcas-list');
-  if(!cont){setTimeout(forcasRender,100);return;}
-  var raw=localStorage.getItem('chassis_forcas');
-  var arr=[];
-  try{arr=raw?JSON.parse(raw):[];}catch(e){arr=[];}
-  if(!arr.length){cont.innerHTML='';return;}
-  cont.innerHTML=arr.map(function(item){
-    var t=(item.text||'').replace(/</g,'&lt;');
-    return '<div class="item-card panel-s" onclick="toggle(this)" style="margin-bottom:6px">'
-      +'<div class="item-header"><div class="item-left">'
-      +'<div class="item-title">'+t+' <span style="font-size:9px;background:#7C3AED22;color:#C4B5FD;padding:1px 6px;border-radius:4px;font-weight:700">Personalizado</span></div>'
-      +'</div><div style="display:flex;align-items:center;gap:6px">'
-      +'<span onclick="event.stopPropagation();forcasDel('\''+item.id+'\')" style="font-size:14px;cursor:pointer;color:#6b7080;padding:2px" title="Remover">&#x1F5D1;</span>'
-      +'<div class="chevron">&#9660;</div>'
-      +'</div></div>'
-      +'<div class="smart-area" onclick="event.stopPropagation()">'
-      +'<div class="smart-title">&#9889; Tarefas &amp; Notas</div>'
-      +'<div class="action act-manter" data-aid="'+item.id+'">'
-      +'<div class="action-top"><div class="act-pill">Planejar</div>'
-      +'<div class="act-body"><div class="act-what">'+t+'</div>Use as tarefas e notas abaixo para registrar ações.</div>'
-      +'</div></div></div></div>';
-  }).join('');
-  cont.querySelectorAll('.action[data-aid]').forEach(function(el){
-    if(!el.querySelector('.action-extras'))renderExtras(el.dataset.aid);
-  });
-}
-forcasRender();
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <style>
@@ -234,7 +192,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
 <div class="home-hd"><div class="ac-badge"><div class="ac-dot"></div><span class="ac-lbl">Atlas Copco</span></div>
 <h1 class="home-title">Scania <em>Brasil</em></h1>
 <p class="home-sub">Key Account &middot; Gestão Estratégica por Fábrica</p></div>
-<div style="text-align:center;margin-top:10px;margin-bottom:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:#ffffff08;border:.5px solid #ffffff15;border-radius:20px;padding:5px 14px;font-size:11px;color:#6b7080;font-family:monospace;"><span style="width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;box-shadow:0 0 6px #1D9E7580;"></span>vc61b69d &nbsp;&middot;&nbsp; 17/11/2026 &agrave;s 11:19</span></div>
+<div style="text-align:center;margin-top:10px;margin-bottom:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:#ffffff08;border:.5px solid #ffffff15;border-radius:20px;padding:5px 14px;font-size:11px;color:#6b7080;font-family:monospace;"><span style="width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;box-shadow:0 0 6px #1D9E7580;"></span>vb1881f8 &nbsp;&middot;&nbsp; 18/11/2026 08:07</span></div>
 <div class="fc-grid">
 <div class="fc" style="background:#04221A;border-color:#1D9E7540" onclick="go('chassis')">
 <div class="fc-bar" style="background:linear-gradient(90deg,#1D9E75,#1D9E7577)"></div>
@@ -1050,7 +1008,10 @@ function exportCSV(){
 }
 
 // ── Init ─────────────────────────────────────────────
-window.addEventListener("load", function(){ forcasRender(); });function forcasSave(){
+// init
+
+
+function forcasSave(){
   var inp=document.getElementById('forcas-inp');
   if(!inp)return;
   var text=inp.value.trim();
