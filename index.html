@@ -290,6 +290,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
 </div></div>
 </div>
 </div>
+
+<div id="cab-forcas-list"></div>
+<div style="margin-top:12px;padding:12px;background:#03192E;border:.5px solid #378ADD40;border-radius:10px">
+<p style="font-size:10px;font-weight:700;color:#B5D4F4;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">+ Nova Força</p>
+<input id="cab-forcas-inp" style="width:100%;background:#ffffff08;border:.5px solid #378ADD40;border-radius:7px;padding:9px 11px;font-size:13px;color:#e8eaf0;outline:none;font-family:inherit;margin-bottom:8px" placeholder="Descreva a nova força..." onkeydown="if(event.key==='Enter'){event.preventDefault();customSave('cab');}">
+<div style="display:flex;justify-content:flex-end">
+<button onclick="event.stopPropagation();customSave('cab')" style="font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;background:#378ADD;color:#fff;border:none;cursor:pointer">&#128190; Salvar</button>
+</div></div></div>
 <div class="panel panel-w " id="panel-cab-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Portfólio</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Custo elevado em operações de acabamento interno da cabina <span class="badge b-high">crítico</span></div><div class="item-desc">Processos de fixação de plásticos e acabamentos sofrem pressão de preço.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="b-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Mapear processos de acabamento com maior pressão de custo na cab</div>Identificar onde concorrente entra por preço — levantamento em 30 dias.</div></div></div>
 <div class="action act-melhorar" data-aid="b-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Avaliar solução de menor custo para fixações de baixa criticidade da cabina</div>Bundle econômico ou ferramenta simplificada para acabamentos — avaliar em 60 dias.</div></div></div>
 </div></div>
@@ -335,6 +343,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
 </div></div>
 </div>
 </div>
+
+<div id="transmission-forcas-list"></div>
+<div style="margin-top:12px;padding:12px;background:#231A04;border:.5px solid #EF9F2740;border-radius:10px">
+<p style="font-size:10px;font-weight:700;color:#FAC775;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">+ Nova Força</p>
+<input id="transmission-forcas-inp" style="width:100%;background:#ffffff08;border:.5px solid #EF9F2740;border-radius:7px;padding:9px 11px;font-size:13px;color:#e8eaf0;outline:none;font-family:inherit;margin-bottom:8px" placeholder="Descreva a nova força..." onkeydown="if(event.key==='Enter'){event.preventDefault();customSave('transmission');}">
+<div style="display:flex;justify-content:flex-end">
+<button onclick="event.stopPropagation();customSave('transmission')" style="font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;background:#EF9F27;color:#fff;border:none;cursor:pointer">&#128190; Salvar</button>
+</div></div></div>
 <div class="panel panel-w " id="panel-transmission-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Prazo e Execução</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Atraso em ferramentas especiais para geometrias da caixa de câmbio <span class="badge b-high">crítico</span></div><div class="item-desc">Adaptações para espaços restritos da transmissão têm lead time elevado.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="t-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar cronograma com alertas para projetos especiais da transmissão</div>Template obrigatório com milestones e responsáveis — aplicar no próximo projeto.</div></div></div>
 <div class="action act-melhorar" data-aid="t-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar protocolo de comunicação proativa para riscos de prazo</div>Aviso mínimo 24h com alternativa — formalizar agora.</div></div></div>
 </div></div>
@@ -380,6 +396,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
 </div></div>
 </div>
 </div>
+
+<div id="engine-forcas-list"></div>
+<div style="margin-top:12px;padding:12px;background:#220808;border:.5px solid #E24B4A40;border-radius:10px">
+<p style="font-size:10px;font-weight:700;color:#FCA5A5;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">+ Nova Força</p>
+<input id="engine-forcas-inp" style="width:100%;background:#ffffff08;border:.5px solid #E24B4A40;border-radius:7px;padding:9px 11px;font-size:13px;color:#e8eaf0;outline:none;font-family:inherit;margin-bottom:8px" placeholder="Descreva a nova força..." onkeydown="if(event.key==='Enter'){event.preventDefault();customSave('engine');}">
+<div style="display:flex;justify-content:flex-end">
+<button onclick="event.stopPropagation();customSave('engine')" style="font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;background:#E24B4A;color:#fff;border:none;cursor:pointer">&#128190; Salvar</button>
+</div></div></div>
 <div class="panel panel-w " id="panel-engine-w"><div class="panel-label">Fraquezas — Weaknesses</div><div class="grp"><div class="grp-title">Qualidade em Projetos Especiais</div><div class="item-card" onclick="toggle(this)"><div class="item-header"><div class="item-left"><div class="item-title">Problemas de qualidade em ferramentas especiais para o motor <span class="badge b-high">crítico</span></div><div class="item-desc">Adaptações para espaços restritos do motor (cabeçote, coletor) geraram não-conformidades.</div></div><div class="chevron">&#9660;</div></div><div class="smart-area" onclick="event.stopPropagation()"><div class="smart-title">&#9889; A&#231;&#245;es SMART</div><div class="action act-melhorar" data-aid="e-w1a1"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Implementar quality gate antes de cada entrega especial para o motor</div>Checklist técnico obrigatório com aprovação formal — aplicar no próximo projeto.</div></div></div>
 <div class="action act-melhorar" data-aid="e-w1a2"><div class="action-top"><div class="act-pill">Melhorar</div><div class="act-body"><div class="act-what">Criar plano de ação corretiva em 48h para qualquer NOK do motor</div>Procedimento de resposta rápida com responsável definido — formalizar em 15 dias.</div></div></div>
 </div></div>
@@ -735,7 +759,7 @@ function go(id) {
   PAGES.forEach(function(p){ document.getElementById('pg-'+p).classList.remove('on'); });
   document.getElementById('pg-'+id).classList.add('on');
   window.scrollTo(0,0);
-  if(id==='chassis'){setTimeout(forcasRender,30);}
+  if(id==='chassis'||id==='cab'||id==='transmission'||id==='engine'){setTimeout(function(){customRender(id);},30);}
   if(id === 'swot' && !swotInited) {
     swotInited = true;
     document.querySelectorAll('.action[data-aid]').forEach(function(el){ renderExtras(el.dataset.aid); });
@@ -1011,43 +1035,95 @@ function exportCSV(){
 // init
 
 
-function forcasSave(){
-  var inp=document.getElementById('forcas-inp');
-  if(!inp)return;
-  var text=inp.value.trim();
-  if(!text){inp.focus();return;}
-  var arr=[];
-  try{arr=JSON.parse(localStorage.getItem('chassis_forcas')||'[]');}catch(e){arr=[];}
-  arr.push({id:'f'+Date.now().toString(36),text:text});
-  localStorage.setItem('chassis_forcas',JSON.stringify(arr));
-  inp.value='';
-  forcasRender();
+
+// ── Custom Items (Nova Força) ──────────────────────────────────────────────
+var FAC_COLORS = {
+  chassis:{bg:'#1D9E7520',border:'#1D9E7540',text:'#5DCAA5',pill:'#1D9E75'},
+  cab:    {bg:'#378ADD20',border:'#378ADD40',text:'#B5D4F4',pill:'#378ADD'},
+  transmission:{bg:'#EF9F2720',border:'#EF9F2740',text:'#FAC775',pill:'#EF9F27'},
+  engine: {bg:'#E24B4A20',border:'#E24B4A40',text:'#FCA5A5',pill:'#E24B4A'}
+};
+
+function customKey(fac){ return fac+'_forcas'; }
+function customListId(fac){ return (fac==='chassis'?'forcas-list':fac+'-forcas-list'); }
+function customInpId(fac){ return (fac==='chassis'?'forcas-inp':fac+'-forcas-inp'); }
+
+function customLoad(fac){
+  try{ return JSON.parse(localStorage.getItem(customKey(fac))||'[]'); }catch(e){ return []; }
 }
-function forcasDel(id){
-  if(!confirm('Remover?'))return;
-  var arr=[];
-  try{arr=JSON.parse(localStorage.getItem('chassis_forcas')||'[]');}catch(e){arr=[];}
-  arr=arr.filter(function(x){return x.id!==id;});
-  localStorage.setItem('chassis_forcas',JSON.stringify(arr));
-  forcasRender();
+function customStore(fac, arr){
+  localStorage.setItem(customKey(fac), JSON.stringify(arr));
 }
-function forcasRender(){
-  var cont=document.getElementById('forcas-list');
-  if(!cont)return;
-  var arr=[];
-  try{arr=JSON.parse(localStorage.getItem('chassis_forcas')||'[]');}catch(e){arr=[];}
-  if(!arr.length){cont.innerHTML='';return;}
-  cont.innerHTML=arr.map(function(item){
-    var t=(item.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    var id=item.id;
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin-bottom:6px;border-radius:10px;background:#1D9E7520;border:.5px solid #1D9E7540;">'
-      +'<div style="font-size:13px;font-weight:600;color:#5DCAA5;">'+t
-      +' <span style="font-size:9px;background:#7C3AED22;color:#C4B5FD;padding:1px 6px;border-radius:4px;font-weight:700">Personalizado</span></div>'
-      +'<button onclick="forcasDel(\''+id+'\')" style="background:none;border:none;font-size:16px;cursor:pointer;color:#6b7080;padding:0 4px">&#x1F5D1;</button>'
-      +'</div>';
+
+function customSave(fac){
+  var iid = customInpId(fac);
+  var inp = document.getElementById(iid);
+  if(!inp) return;
+  var text = inp.value.trim();
+  if(!text){ inp.focus(); return; }
+  var arr = customLoad(fac);
+  arr.push({id:'f'+Date.now().toString(36), text:text});
+  customStore(fac, arr);
+  inp.value = '';
+  customRender(fac);
+}
+
+// Alias para compatibilidade com o botão existente do chassis
+function forcasSave(){ customSave('chassis'); }
+
+function customDel(fac, id){
+  if(!confirm('Remover este item?')) return;
+  var arr = customLoad(fac).filter(function(x){ return x.id !== id; });
+  customStore(fac, arr);
+  customRender(fac);
+}
+
+function customEdit(fac, id){
+  var arr = customLoad(fac);
+  var item = arr.find(function(x){ return x.id===id; });
+  if(!item) return;
+  var novo = prompt('Editar força:', item.text);
+  if(novo===null) return;
+  novo = novo.trim();
+  if(!novo){ if(confirm('Texto vazio. Remover item?')) customDel(fac,id); return; }
+  item.text = novo;
+  customStore(fac, arr);
+  customRender(fac);
+}
+
+function customRender(fac){
+  var lid = customListId(fac);
+  var cont = document.getElementById(lid);
+  if(!cont) return;
+  var arr = customLoad(fac);
+  var col = FAC_COLORS[fac] || FAC_COLORS.chassis;
+  if(!arr.length){ cont.innerHTML=''; return; }
+  cont.innerHTML = arr.map(function(item){
+    var t = (item.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var id = item.id;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;'
+      +'padding:11px 14px;margin-bottom:6px;border-radius:10px;'
+      +'background:'+col.bg+';border:.5px solid '+col.border+';">'
+      +'<div style="flex:1;font-size:13px;font-weight:600;color:'+col.text+';">'+t
+      +' <span style="font-size:9px;background:#7C3AED22;color:#C4B5FD;'
+      +'padding:1px 6px;border-radius:4px;font-weight:700;margin-left:6px">Personalizado</span></div>'
+      +'<div style="display:flex;gap:4px;margin-left:8px;">'
+      +'<button onclick="customEdit(\''+fac+'\',\''+id+'\')" '
+      +'style="background:#ffffff12;border:.5px solid #ffffff20;border-radius:6px;'
+      +'font-size:12px;cursor:pointer;color:#a0a8bb;padding:4px 8px;" title="Editar">&#9998;</button>'
+      +'<button onclick="customDel(\''+fac+'\',\''+id+'\')" '
+      +'style="background:#E24B4A18;border:.5px solid #E24B4A30;border-radius:6px;'
+      +'font-size:12px;cursor:pointer;color:#FCA5A5;padding:4px 8px;" title="Remover">&#x1F5D1;</button>'
+      +'</div></div>';
   }).join('');
 }
-window.addEventListener('load',function(){forcasRender();});
+
+function customRenderAll(){
+  ['chassis','cab','transmission','engine'].forEach(customRender);
+}
+
+window.addEventListener('load', customRenderAll);
+
 </script>
 </body>
 </html>
